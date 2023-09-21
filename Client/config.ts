@@ -7,7 +7,7 @@ enum LayoutType {
 }
 
 const CONFIG = {
-  appName: 'Reforge',
+  appName: 'Text-Labeling',
   helpLink: 'https://github.com/arifszn/reforge',
   enablePWA: true,
   theme: {
@@ -16,7 +16,7 @@ const CONFIG = {
     showBreadcrumb: true,
   },
   metaTags: {
-    title: 'Reforge',
+    title: 'Text-Labeling',
     description:
       'An out-of-box UI solution for enterprise applications as a React boilerplate.',
     imageURL: 'logo.svg',
