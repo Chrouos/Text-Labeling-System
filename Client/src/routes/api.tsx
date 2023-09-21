@@ -5,4 +5,6 @@ export const apiRoutes = {
   logout: `${API_URL}/logout`,
   users: `${API_URL}/users`,
   reviews: `${API_URL}/unknown`,
+  updateTheFile: `${API_URL}/processData/uploadTheFile`
+
 };
