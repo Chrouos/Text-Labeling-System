@@ -88,6 +88,7 @@ const labelData = () => {
     defaultHttp.post(apiRoutes.fetchFileContentJson, request)
       .then((response) => {
         setFileContentList(response.data);
+        setProcessContentList(response.data)
 
         setFileContentFields(Object.keys(response.data[0]));
         setFileContentKey(fileContentFields[0])
@@ -102,21 +103,22 @@ const labelData = () => {
   }
 
   // ----- API -> 上傳擷取檔案
-  // const uploadProcessedFile = async (fileName: string) => {
+  const uploadProcessedFile = async (fileName: string) => {
     
-  //   const request = {
-  //     fileName: fileName as string,
-  //   }
+    const request = {
+      fileName: fileName as string,
+      content:processContentList
+    }
 
-  //   defaultHttp.post(apiRoutes.fetchFileContentJson, request)
-  //     .then((response) => {
+    defaultHttp.post(apiRoutes.uploadProcessedFile, request)
+      .then((response) => {
         
         
-  //     })
-  //     .catch((error) => {
-  //       handleErrorResponse(error);
-  //     }).finally(() => {});
-  // }
+      })
+      .catch((error) => {
+        handleErrorResponse(error);
+      }).finally(() => {});
+  }
 
   // ----- 選擇檔案
   const chooseTheFile = (selectedValue: string) => {

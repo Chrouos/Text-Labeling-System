@@ -13,12 +13,13 @@ function formatDate(date) {
 // -------------------- 儲存檔案
 exports.uploadTheFile = async (req, res) => {
     try {
-        
         const targetDirectory = path.join(__dirname, '..', 'uploads', 'files');
+        const processedDirectory = path.join(__dirname, '..', 'uploads', 'processed');
 
-        // - 確認資料夾是否存在
-        if (!fs.existsSync(targetDirectory)) {  fs.mkdirSync(targetDirectory, { recursive: true }); }
-        
+        // 確認資料夾是否存在
+        if (!fs.existsSync(targetDirectory)) { fs.mkdirSync(targetDirectory, { recursive: true }); }
+        if (!fs.existsSync(processedDirectory)) { fs.mkdirSync(processedDirectory, { recursive: true }); }
+
         const storage = multer.diskStorage({
             destination: function(req, file, cb) {
                 cb(null, targetDirectory);
@@ -36,14 +37,18 @@ exports.uploadTheFile = async (req, res) => {
                 res.status(500).send(`[uploadTheFile] Multer error: ${err.message || err}`);
                 return;
             }
-        
+
+            const sourceFilePath = req.file.path;
+            const destFilePath = path.join(processedDirectory, req.file.filename);
+            fs.copyFileSync(sourceFilePath, destFilePath);
+
             const responseData = {
                 fileName: req.file.filename,
                 originalName: req.file.originalname,
                 path: req.file.path,
                 size: req.file.size
             };
-        
+
             res.setHeader('Content-Type', 'application/json; charset=utf-8');
             res.status(200).send(responseData);
         });
@@ -133,8 +138,16 @@ exports.fetchFileContentJson = async (req, res) => {
 // - 儲存已修改的資料
 exports.uploadProcessedFile = async (req, res) => {
     try {
-        
         const processedDirectory = path.join(__dirname, '..', 'uploads', 'processed');
+
+        // 確認資料夾是否存在
+        if (!fs.existsSync(processedDirectory)) {
+            fs.mkdirSync(processedDirectory, { recursive: true });
+        }
+
+        // 儲存檔案
+        const filePath = path.join(processedDirectory, req.body.fileName);
+        fs.writeFileSync(filePath, req.body.content, 'utf8');
 
         res.status(200).send(req.body);
     } catch (error) {
