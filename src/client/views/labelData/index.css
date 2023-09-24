@@ -1,0 +1,30 @@
+.ant-btn-check {
+    color: #00b706;
+    border-color: #00b706;
+}
+
+.ant-btn-check:hover {
+    color: #00b70682 !important;
+    border-color: #00b70682 !important;
+}
+
+.ant-upload {
+    width: 100% !important;
+}
+
+.ant-btn-delete {
+    color: #290000;
+    border-color: #290000;
+}
+
+.ant-btn-delete:hover {
+    color: #2900005d !important;
+    border-color: #2900005d !important;
+}
+
+@media (max-width: 1400px) {
+    .btn-text {
+      display: none !important;  /* 隐藏文本 */
+    }
+  }
+  
