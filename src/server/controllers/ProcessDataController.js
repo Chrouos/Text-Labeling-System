@@ -204,7 +204,7 @@ exports.uploadProcessedFile = async (req, res) => {
 // - 下載檔案
 exports.downloadProcessedFile = async (req, res) => {
     try {
-        const targetDirectory = path.join(__dirname, '..', 'uploads', 'files');
+        const targetDirectory = path.join(__dirname, '..', 'uploads', 'processed');
         const filePath = path.join(targetDirectory, req.body.fileName);
 
         // 檢查檔案是否存在

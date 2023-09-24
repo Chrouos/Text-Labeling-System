@@ -33,7 +33,7 @@ const { Option } = Select;
 
 // - 定義型態
 type FileNameItem = { value: string; label: string; };
-type FieldsNameItem = { name: string; value: string; };
+type FieldsNameItem = { name: string; value: string; regular_expression: string; };
 type ProcessedContent = { fileName:string, content: string; processed?: FieldsNameItem[]; };
 
 
@@ -109,6 +109,8 @@ const labelData = () => {
 
         setCurrentFileContentJson(response.data[0]); // = 目前檔案內容
         setCurrentFileContentPage(1); 
+
+        
         
       })
       .catch((error) => {
@@ -125,7 +127,9 @@ const labelData = () => {
     defaultHttp.post(apiRoutes.fetchUploadsProcessedFileName, request)
       .then((response) => {
         setProcessContentList(response.data);
-        setLabelFields(response.data[0].processed || [])
+        if (response?.data?.[0]?.processed) {
+          setLabelFields(response.data[0].processed);
+        }
       })
       .catch((error) => {
         handleErrorResponse(error);
@@ -277,9 +281,10 @@ const labelData = () => {
                     regular_expression: regular_expression 
                 };
             }
+
             return field;
         });
-        setLabelFields(updatedLabelFields || []);
+        setLabelFields(updatedLabelFields);
 
         // - 更新 processContentList[currentFileContentPage] 的內容
         const updatedProcessContentList = [...processContentList];
@@ -301,15 +306,43 @@ const labelData = () => {
     setCurrentFileContentDisplay(fileContentList[index][fileContentKey]);
     uploadProcessedFile();
 
-    
+    console.log("🚀 ~ file: index.tsx:311 ~ clearedLabelFields ~ labelFields:", labelFields)
+
     const clearedLabelFields = labelFields.map(field => ({
-      ...field,
+      name: field.name,
       value: "",
       regular_expression: ""
     }));
-  
+
+    let newClearedLabelFields: FieldsNameItem[] = [...clearedLabelFields]; 
+
+    const processed = processContentList[index]?.processed;
+    if (processed) {
+      for (let item of processed) {
+
+        // 檢查 clearedLabelFields 是否已經有該項目
+        const exists = newClearedLabelFields.some(field => field.name === item.name);
+        
+        // 如果 clearedLabelFields 中沒有該項目，則新增
+        if (!exists) {
+            newClearedLabelFields.push({
+                name: item.name,
+                value: item.value,
+                regular_expression: item.regular_expression,
+            });
+        }
+        // 如果 clearedLabelFields 中已有該項目，則覆蓋
+        else {
+            const indexToUpdate = newClearedLabelFields.findIndex(field => field.name === item.name);
+            if (indexToUpdate !== -1) {
+                newClearedLabelFields[indexToUpdate].value = item.value;
+                newClearedLabelFields[indexToUpdate].regular_expression = item.regular_expression;
+            }
+        }
+      }
+    } 
     
-    setLabelFields(processContentList[index].processed || clearedLabelFields);
+    setLabelFields(newClearedLabelFields);
   
   }
 
@@ -324,7 +357,7 @@ const labelData = () => {
     }
 
     // - 確認可儲存
-    const newLabel: FieldsNameItem = { name:text, value:"" };
+    const newLabel: FieldsNameItem = { name:text, value:"", regular_expression: "" };
     setLabelFields(prevLabelFields => [...prevLabelFields, newLabel]);
     setNewLabel("");
   };
@@ -371,26 +404,21 @@ const labelData = () => {
           changePage(currentFileContentPage - 1);
         }
         break;
-      // 如果需要上下鍵，您可以在這裡添加
-      // case "ArrowUp":
-      //   // 上鍵的邏輯
-      //   break;
-      // case "ArrowDown":
-      //   // 下鍵的邏輯
-      //   break;
-      default:
-        break;
+
     }
   };
 
-  useEffect(() => {
-    window.addEventListener("keydown", handleKeyDown);
+  useEffect(()=>{ console.log("labelFields", labelFields)}, [labelFields])
+
   
-    // 清除事件監聽器
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [currentFileContentPage, fileContentList.length]);
+  // useEffect(() => {
+  //   window.addEventListener("keydown", handleKeyDown);
+  
+  //   // 清除事件監聽器
+  //   return () => {
+  //     window.removeEventListener("keydown", handleKeyDown);
+  //   };
+  // }, []);
   
   // ----- 進入網頁執行一次
   useEffect(() => {
@@ -466,6 +494,7 @@ const labelData = () => {
                       const selectedKey = e.target.value;
                       setFileContentKey(selectedKey);
                       setCurrentFileContentDisplay(currentFileContentJson[selectedKey]);
+                      
                   }}>
                   {
                       fileContentFields.map((field, index) => (
