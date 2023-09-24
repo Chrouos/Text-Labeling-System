@@ -16,7 +16,6 @@ import {
 } from 'antd';
 import { message } from 'antd';
 import type { UploadProps } from 'antd';
-import type { RadioChangeEvent } from 'antd';
 import type { UploadFile } from 'antd/es/upload/interface';
 import { UploadOutlined, CheckOutlined, DeleteOutlined, CloseOutlined } from '@ant-design/icons';
 
@@ -61,6 +60,7 @@ const labelData = () => {
 
   const [newLabel, setNewLabel] = useState<string>("") // = 新增的欄位名稱.
   const [labelFields, setLabelFields] = useState<FieldsNameItem[]>([]); // = 已新增的欄位 Fields.
+  const [currentSelectedNewLabel, setCurrentSelectedNewLabel] = useState<string>(""); // = 選擇的新欄位
 
   // ----- API -> 抓取在 uploads/files 裡面的資料名稱
   const fetchFiles = async () => {
