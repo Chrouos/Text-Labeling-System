@@ -18,7 +18,7 @@ import {
 import { message } from 'antd';
 import type { UploadProps } from 'antd';
 import type { UploadFile } from 'antd/es/upload/interface';
-import { UploadOutlined, CheckOutlined, DeleteOutlined, CloseOutlined } from '@ant-design/icons';
+import { UploadOutlined, CheckOutlined, DeleteOutlined, CloseOutlined, DownloadOutlined, DownOutlined, UpOutlined} from '@ant-design/icons';
 import Highlighter from "react-highlight-words";
 
 import { webRoutes } from '../../routes/web';
@@ -34,6 +34,7 @@ const { Option } = Select;
 // - 定義型態
 type FileNameItem = { value: string; label: string; };
 type FieldsNameItem = { name: string; value: string; };
+type ProcessedContent = { fileName:string, content: string; processed?: FieldsNameItem[]; };
 
 
 // - 頁面順序
@@ -53,10 +54,12 @@ const labelData = () => {
 
   const [messageApi, contextHolder] = message.useMessage();
   const [fileNameList, setFileNameList] = useState<FileNameItem[]>([]);
+  const [currentFileName, setCurrentFileName] = useState<string>("");
+
   const [fileContentFields, setFileContentFields] = useState<string[]>([]); // = 目前檔案的 所有欄位名稱
   const [fileContentKey, setFileContentKey] = useState<string>(""); // = 目前選擇的欄位
   const [fileContentList, setFileContentList] = useState([]); // = 原始檔案內容
-  const [processContentList, setProcessContentList] = useState<string[]>([]); // = 擷取後的檔案
+  const [processContentList, setProcessContentList] = useState<ProcessedContent[]>([]); // = 擷取後的檔案
   
   const [currentFileContentPage, setCurrentFileContentPage] = useState(1);
   const [currentFileContentJson, setCurrentFileContentJson] = useState<Record<string, any>>({});
@@ -65,6 +68,17 @@ const labelData = () => {
   const [newLabel, setNewLabel] = useState<string>("") // = 新增的欄位名稱.
   const [labelFields, setLabelFields] = useState<FieldsNameItem[]>([]); // = 已新增的欄位 Fields.
   const [currentSelectedNewLabel, setCurrentSelectedNewLabel] = useState<string>(""); // = 選擇的新欄位
+
+  const [isVisible, setIsVisible] = useState<boolean[]>([true, true, true]);
+  const chooseIsVisible = (index: number) => {
+    return (event: React.MouseEvent<HTMLElement>) => {
+      const newIsVisible = [...isVisible];
+      newIsVisible[index] = !newIsVisible[index];
+      setIsVisible(newIsVisible);
+    };
+  }
+  
+  
 
   // ----- API -> 抓取在 uploads/files 裡面的資料名稱
   const fetchFiles = async () => {
@@ -88,7 +102,7 @@ const labelData = () => {
     defaultHttp.post(apiRoutes.fetchFileContentJson, request)
       .then((response) => {
         setFileContentList(response.data);
-        setProcessContentList(response.data)
+        // setProcessContentList(response.data)
 
         setFileContentFields(Object.keys(response.data[0]));
         setFileContentKey(fileContentFields[0])
@@ -102,27 +116,105 @@ const labelData = () => {
       }).finally(() => {});
   }
 
-  // ----- API -> 上傳擷取檔案
-  const uploadProcessedFile = async (fileName: string) => {
+  const fetchProcessedFileContent = async (fileName: string) => {
     
     const request = {
       fileName: fileName as string,
-      content:processContentList
     }
 
-    defaultHttp.post(apiRoutes.uploadProcessedFile, request)
+    defaultHttp.post(apiRoutes.fetchUploadsProcessedFileName, request)
       .then((response) => {
-        
-        
+        setProcessContentList(response.data);
+        setLabelFields(response.data[0].processed || [])
       })
       .catch((error) => {
         handleErrorResponse(error);
       }).finally(() => {});
   }
 
+  // ----- API -> 上傳擷取檔案
+  const uploadProcessedFile = async () => {
+    
+    const request = {
+      fileName: currentFileName,
+      content:processContentList
+    }
+
+    defaultHttp.post(apiRoutes.uploadProcessedFile, request)
+      .then((response) => { })
+      .catch((error) => {
+        handleErrorResponse(error);
+      }).finally(() => {});
+  }
+
+    // ----- API -> 下載檔案
+    const downloadProcessedFile = async () => {
+    
+      const request = {
+        fileName: currentFileName,
+      }
+  
+      defaultHttp.post(apiRoutes.downloadProcessedFile, request)
+        .then((response) => {
+
+            console.log(response)
+
+            // - 假設 response.data 為 binary
+            const blob = new Blob([response.data], { type: 'application/octet-stream' }); // 請根據你的檔案類型調整 MIME 類型
+            const url = URL.createObjectURL(blob);
+
+            // - 創建一個 <a> 標籤來觸發檔案下載
+            const a = document.createElement('a');
+            a.href = url;
+
+            // - 增加下載時間
+            const contentDisposition = response.headers['content-disposition'];
+            let fileName = currentFileName;
+            if (contentDisposition) {
+                const match = contentDisposition.match(/filename="?(.+)"?$/);
+                if (match && match[1]) {
+                    fileName = match[1];
+                }
+            }
+
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+
+            // - 釋放 URL
+            URL.revokeObjectURL(url);
+
+         })
+        .catch((error) => {
+          handleErrorResponse(error);
+        }).finally(() => {});
+    }
+
+
+  // ----- API -> 刪除檔案
+  const deleteFile = async () => {
+    
+    const request = { fileName: currentFileName, }
+
+    defaultHttp.post(apiRoutes.deleteFile, request)
+      .then((response) => { 
+        fetchFiles();
+        setCurrentFileName("");
+        messageApi.success("刪除成功");
+
+      })
+      .catch((error) => {
+        handleErrorResponse(error);
+      }).finally(() => {});
+  }
+    
+
   // ----- 選擇檔案
   const chooseTheFile = (selectedValue: string) => {
     fetchFileContent(selectedValue);
+    fetchProcessedFileContent(selectedValue);
+    setCurrentFileName(selectedValue);
   }
 
   // ----- 上傳檔案的資料
@@ -169,16 +261,42 @@ const labelData = () => {
     const selectedText = textarea.value.substring(textarea.selectionStart, textarea.selectionEnd);
 
     if (selectedText) {
-      const updatedLabelFields = labelFields.map(field => {
+        const updatedLabelFields = labelFields.map(field => {
+            if (field.name === currentSelectedNewLabel) {
+                return { ...field, value: selectedText };
+            }
+            return field;
+        });
+        setLabelFields(updatedLabelFields || []);
 
-        if (field.name === currentSelectedNewLabel) {
-          return { ...field, value: selectedText };
-        }
-        return field;
-      });
-      setLabelFields(updatedLabelFields);
+        // - 更新 processContentList[currentFileContentPage] 的內容
+        const updatedProcessContentList = [...processContentList];
+        const currentContent = updatedProcessContentList[currentFileContentPage-1];
+        updatedProcessContentList[currentFileContentPage-1] = {
+            ...currentContent,
+            processed: updatedLabelFields
+        };
+        setProcessContentList(updatedProcessContentList); 
     }
   }
+
+  const changePage = (page: number) => {
+    const index = page - 1; // 將頁碼轉換為索引
+    setCurrentFileContentPage(page);
+    setCurrentFileContentJson(fileContentList[index]);
+    setCurrentFileContentDisplay(fileContentList[index][fileContentKey]);
+    uploadProcessedFile();
+
+    
+    const clearedLabelFields = labelFields.map(field => ({
+      ...field,
+      value: ""
+    }));
+  
+    setLabelFields(processContentList[index].processed || clearedLabelFields);
+  
+  }
+
 
   const addLabel = (text: string) => {
 
@@ -197,6 +315,12 @@ const labelData = () => {
 
   // ----- show return.
   const showLabelList = () => {
+
+    const handleDelete = (indexToDelete: number) => {
+      const updatedLabelFields = labelFields.filter((_, index) => index !== indexToDelete);
+      setLabelFields(updatedLabelFields); 
+    };
+    
     return (
       <>
         {labelFields.map((labelField: FieldsNameItem, index: number) => (
@@ -207,15 +331,18 @@ const labelData = () => {
                   {labelField.name}
                 </span>
               } 
-              // name={labelField.name}
             >
-              <TextArea value={labelField.value}  />
+              <div className='grid grid-cols-12 gap-4'>
+                <TextArea value={labelField.value} className="col-span-11" />
+                <button onClick={() => handleDelete(index)}><DeleteOutlined /></button> 
+              </div>
             </Form.Item>
           </div>
         ))}
       </>
     );
   }
+
   
   // ----- 進入網頁執行一次
   useEffect(() => {
@@ -223,10 +350,15 @@ const labelData = () => {
   }, []);
   
   return (
-    <BasePageContainer breadcrumb={breadcrumb} transparent={true}>
+    <BasePageContainer breadcrumb={breadcrumb} transparent={true} 
+      extra={ <>
+        <Button onClick={chooseIsVisible(0)} className={isVisible[0] ? 'ant-btn-beChosen' : 'ant-btn-notChosen'}>選擇檔案</Button>
+        <Button onClick={chooseIsVisible(1)} className={isVisible[1] ? 'ant-btn-beChosen' : 'ant-btn-notChosen'}>選擇欄位</Button>
+        <Button onClick={chooseIsVisible(2)} className={isVisible[2] ? 'ant-btn-beChosen' : 'ant-btn-notChosen'}>新增欄位</Button>
+      </> } >
       <Row gutter={24}>
         
-        <Col xl={12} lg={12} md={12} sm={24} xs={24} style={{ marginBottom: 24 }} >
+        <Col xl={14} lg={14} md={14} sm={24} xs={24} style={{ marginBottom: 24 }} >
           <Card bordered={false} className="w-full h-full cursor-default">
           <Pagination 
             className='mb-4' 
@@ -234,12 +366,7 @@ const labelData = () => {
             current={currentFileContentPage} 
             total={fileContentList.length} 
             defaultCurrent={1}
-            onChange={(page, pageSize) => {
-              const index = page - 1; // 將頁碼轉換為索引
-              setCurrentFileContentPage(page);
-              setCurrentFileContentJson(fileContentList[index]);
-              setCurrentFileContentDisplay(fileContentList[index][fileContentKey]);
-            }}
+            onChange={(page, pageSize) => changePage(page)}
             simple />
 
             <TextArea
@@ -252,81 +379,91 @@ const labelData = () => {
           </Card>
         </Col >
 
-        <Col xl={12} lg={12} md={12} sm={24} xs={24} style={{ marginBottom: 24 }}>
+        <Col xl={10} lg={10} md={10} sm={24} xs={24} style={{ marginBottom: 24 }}>
 
           {/* 選擇檔案 + 上傳 */}
-          <Card bordered={false} title=" 選擇檔案 or 上傳" className="w-full cursor-default grid gap-4 mb-4">
-            <div className='grid grid-cols-3 gap-4'>
-              <Select className='w-full mb-4 col-span-2' 
-                placeholder="Select the File Name"
-                optionFilterProp="children"
-                filterOption={fileName_filterOption}
-                options={fileNameList}
-                onChange={chooseTheFile}
-                showSearch  />
-              <Button className="w-full ant-btn-delete"  icon={<DeleteOutlined />} > 
-                <span className="btn-text">Delete</span> 
-              </Button>
-            </div>
-
-            <Upload maxCount={1} {...uploadFileProps}  >
-              <Button type="dashed" className="w-full" danger icon={<UploadOutlined />}> Click to Upload </Button>
-              {/* // ! 目前有名字太長跑板問題  */}
-            </Upload>
-          </Card>
+          {isVisible[0] && <>
+            <Card bordered={false} className="w-full cursor-default grid gap-4 mb-4"  title={"選擇檔案 or 上傳"} 
+              extra={<Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(0)}></Button>}>
+                <div className='grid grid-cols-4 gap-4'>
+                    <Select className='w-full mb-4 col-span-2' 
+                      placeholder="Select the File Name"
+                      optionFilterProp="children"
+                      filterOption={fileName_filterOption}
+                      options={fileNameList}
+                      onChange={chooseTheFile}
+                      value={currentFileName}
+                      showSearch  />
+                    <Button className="w-full ant-btn-check"  icon={<DownloadOutlined />} onClick={downloadProcessedFile}> 
+                      <span className="btn-text">Down</span> 
+                    </Button>
+                    <Button className="w-full ant-btn-delete"  icon={<DeleteOutlined />} onClick={deleteFile} > 
+                      <span className="btn-text">Delete</span> 
+                    </Button>
+                </div>
+                <Upload maxCount={1} {...uploadFileProps}  >
+                  <Button type="dashed" className="w-full" danger icon={<UploadOutlined />}> Click to Upload </Button>
+                  {/* // ! 目前有名字太長跑板問題  */}
+                </Upload>
+            </Card>
+          </> }
 
           {/* 選擇欄位 */}
-          <Card bordered={false} title="選擇欄位" className="w-full cursor-default grid gap-4 mb-4">
-            <Radio.Group defaultValue={fileContentFields[0] || ""}
-                onChange={(e) => {
-                    const selectedKey = e.target.value;
-                    setFileContentKey(selectedKey);
-                    setCurrentFileContentDisplay(currentFileContentJson[selectedKey]);
-                }}
-            >
-                {
-                    fileContentFields.map((field, index) => (
-                        <Radio.Button key={index} value={field}>
-                            {field.charAt(0).toUpperCase() + field.slice(1)}
-                        </Radio.Button>
-                    ))
-                }
-            </Radio.Group>
-          </Card>
+          { isVisible[1] && <>
+            <Card bordered={false} title="選擇欄位" className="w-full cursor-default grid gap-4 mb-4"
+              extra={<Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(1)}></Button>}>
+            
+              <Radio.Group defaultValue={fileContentFields[0] || ""}
+                  onChange={(e) => {
+                      const selectedKey = e.target.value;
+                      setFileContentKey(selectedKey);
+                      setCurrentFileContentDisplay(currentFileContentJson[selectedKey]);
+                  }}>
+                  {
+                      fileContentFields.map((field, index) => (
+                          <Radio.Button key={index} value={field}>
+                              {field.charAt(0).toUpperCase() + field.slice(1)}
+                          </Radio.Button>
+                      ))
+                  }
+              </Radio.Group>
+           
+            </Card>
+           </> }
 
           {/* 新增欄位 */}
-          <Card bordered={false} title="新增欄位" className="w-full cursor-default grid gap-4 mb-4" extra={<p>{currentSelectedNewLabel}</p>}>
-            <Form form={addLabelForm} name="dynamic_label_form" >
-              <Form.List name="labels">
-                {(labelFields) => (
-                  <div style={{ display: 'flex', rowGap: 16, flexDirection: 'column' }}>
-                    {showLabelList()}
+          { isVisible[2] && <>
+            <Card bordered={false} title="新增欄位" className="w-full cursor-default grid gap-4 mb-4" 
+              extra={<p>{currentSelectedNewLabel} <Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(2)}></Button></p>}>
+              
+                <Form form={addLabelForm} name="dynamic_label_form" >
+                  <Form.List name="labels">
+                    {(labelFields) => (
+                      <div style={{ display: 'flex', rowGap: 16, flexDirection: 'column' }}>
+                        {showLabelList()}
 
-                    <div className='grid grid-cols-2 gap-4'>
-                      <Input addonBefore="name" value={newLabel} onChange={handleChange}/>
-                      <Button type="dashed" onClick={() => {addLabel(newLabel)}} block disabled={!newLabel}> 
-                        + Add Item 
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </Form.List>
-                  
+                        <div className='grid grid-cols-2 gap-4'>
+                          <Input addonBefore="name" value={newLabel} onChange={handleChange}/>
+                          <Button type="dashed" onClick={() => {addLabel(newLabel)}} block disabled={!newLabel}> 
+                            + Add Item 
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </Form.List>
 
+                  <Form.Item noStyle shouldUpdate >
+                    {() => (
+                      <Typography>
+                        <pre>{JSON.stringify(labelFields, null, 2)}</pre>
+                      </Typography>
 
-              <Form.Item noStyle shouldUpdate >
-                {() => (
-                  <Typography>
-                    <pre>{JSON.stringify(labelFields, null, 2)}</pre>
-                  </Typography>
+                    )}
+                  </Form.Item>
 
-                )}
-              </Form.Item>
-
-
-
-            </Form>
-          </Card>
+                </Form>
+            </Card>
+          </> }
 
         </Col>
 

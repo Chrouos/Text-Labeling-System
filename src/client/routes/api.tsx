@@ -5,5 +5,8 @@ export const apiRoutes = {
   uploadTheFile: `${API_URL}/processData/uploadTheFile`,
   fetchFileContentJson: `${API_URL}/processData/fetchFileContentJson`,
   uploadProcessedFile: `${API_URL}/processData/uploadProcessedFile`,
+  fetchUploadsProcessedFileName: `${API_URL}/processData/fetchUploadsProcessedFileName`,
+  downloadProcessedFile: `${API_URL}/processData/downloadProcessedFile`,
+  deleteFile: `${API_URL}/processData/deleteFile`,
   
 };
