@@ -12,12 +12,14 @@ import {
   Form,
   Space, 
   Typography,
-  Radio
+  Radio,
+  Pagination
 } from 'antd';
 import { message } from 'antd';
 import type { UploadProps } from 'antd';
 import type { UploadFile } from 'antd/es/upload/interface';
 import { UploadOutlined, CheckOutlined, DeleteOutlined, CloseOutlined } from '@ant-design/icons';
+import Highlighter from "react-highlight-words";
 
 import { webRoutes } from '../../routes/web';
 import { Link } from 'react-router-dom';
@@ -51,11 +53,12 @@ const labelData = () => {
 
   const [messageApi, contextHolder] = message.useMessage();
   const [fileNameList, setFileNameList] = useState<FileNameItem[]>([]);
-  const [fileContentList, setFileContentList] = useState([]);
   const [fileContentFields, setFileContentFields] = useState<string[]>([]); // = 目前檔案的 所有欄位名稱
   const [fileContentKey, setFileContentKey] = useState<string>(""); // = 目前選擇的欄位
+  const [fileContentList, setFileContentList] = useState([]); // = 原始檔案內容
+  const [processContentList, setProcessContentList] = useState<string[]>([]); // = 擷取後的檔案
   
-  const [currentFileContentNumber, setCurrentFileContentNumber] = useState(0);
+  const [currentFileContentPage, setCurrentFileContentPage] = useState(1);
   const [currentFileContentJson, setCurrentFileContentJson] = useState<Record<string, any>>({});
   const [currentFileContentDisplay, setCurrentFileContentDisplay] = useState<string>("");
 
@@ -75,7 +78,7 @@ const labelData = () => {
       }).finally(() => {});
   }
   
-  // ----- API - >抓取指定 fileName 的內容 -> Json
+  // ----- API -> 抓取指定 fileName 的內容 -> Json
   const fetchFileContent = async (fileName: string) => {
     
     const request = {
@@ -90,7 +93,7 @@ const labelData = () => {
         setFileContentKey(fileContentFields[0])
 
         setCurrentFileContentJson(response.data[0]); // = 目前檔案內容
-        setCurrentFileContentNumber(0);
+        setCurrentFileContentPage(1); 
         
       })
       .catch((error) => {
@@ -98,11 +101,27 @@ const labelData = () => {
       }).finally(() => {});
   }
 
+  // ----- API -> 上傳擷取檔案
+  // const uploadProcessedFile = async (fileName: string) => {
+    
+  //   const request = {
+  //     fileName: fileName as string,
+  //   }
+
+  //   defaultHttp.post(apiRoutes.fetchFileContentJson, request)
+  //     .then((response) => {
+        
+        
+  //     })
+  //     .catch((error) => {
+  //       handleErrorResponse(error);
+  //     }).finally(() => {});
+  // }
+
   // ----- 選擇檔案
   const chooseTheFile = (selectedValue: string) => {
     fetchFileContent(selectedValue);
   }
-
 
   // ----- 上傳檔案的資料
   const uploadFileProps: UploadProps = {
@@ -112,7 +131,6 @@ const labelData = () => {
       if (!isTxt) { messageApi.error(`${file.name} is not a "txt" file`); }
   
       const isFileNameExisting = fileNameList.some(entry => entry.value === file.name);
-      console.log(isFileNameExisting, isTxt)
       
       if (isFileNameExisting) {
         messageApi.error(`${file.name} already exists in the list.`);
@@ -177,7 +195,6 @@ const labelData = () => {
 
   // ----- show return.
   const showLabelList = () => {
-    console.log(labelFields);
     return (
       <>
         {labelFields.map((labelField: FieldsNameItem, index: number) => (
@@ -209,13 +226,27 @@ const labelData = () => {
         
         <Col xl={12} lg={12} md={12} sm={24} xs={24} style={{ marginBottom: 24 }} >
           <Card bordered={false} className="w-full h-full cursor-default">
+          <Pagination 
+            className='mb-4' 
+            pageSize={1} 
+            current={currentFileContentPage} 
+            total={fileContentList.length} 
+            defaultCurrent={1}
+            onChange={(page, pageSize) => {
+              const index = page - 1; // 將頁碼轉換為索引
+              setCurrentFileContentPage(page);
+              setCurrentFileContentJson(fileContentList[index]);
+              setCurrentFileContentDisplay(fileContentList[index][fileContentKey]);
+            }}
+            simple />
+
             <TextArea
+              className='h-full'
               showCount
-              style={{ height: 600, resize: 'none' }}
+              style={{ height: 500, marginBottom: 24 }}
               placeholder="欲標記內容"
               value={currentFileContentDisplay}
-              onSelect={handleTextSelection}
-            />
+              onSelect={handleTextSelection} />
           </Card>
         </Col >
 
@@ -223,18 +254,14 @@ const labelData = () => {
 
           {/* 選擇檔案 + 上傳 */}
           <Card bordered={false} title=" 選擇檔案 or 上傳" className="w-full cursor-default grid gap-4 mb-4">
-            <div className='grid grid-cols-5 gap-4'>
-              <Select className='w-full mb-4 col-span-3' 
+            <div className='grid grid-cols-3 gap-4'>
+              <Select className='w-full mb-4 col-span-2' 
                 placeholder="Select the File Name"
                 optionFilterProp="children"
                 filterOption={fileName_filterOption}
                 options={fileNameList}
                 onChange={chooseTheFile}
-                showSearch 
-              />
-              <Button className="w-full ant-btn-check"  icon={<CheckOutlined />} > 
-                <span className="btn-text">Check</span> 
-              </Button>
+                showSearch  />
               <Button className="w-full ant-btn-delete"  icon={<DeleteOutlined />} > 
                 <span className="btn-text">Delete</span> 
               </Button>
@@ -304,6 +331,7 @@ const labelData = () => {
       </Row>
 
       {contextHolder}
+
     </BasePageContainer>
   );
 };

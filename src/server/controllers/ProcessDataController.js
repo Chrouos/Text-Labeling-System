@@ -16,9 +16,8 @@ exports.uploadTheFile = async (req, res) => {
         
         const targetDirectory = path.join(__dirname, '..', 'uploads', 'files');
 
-        if (!fs.existsSync(targetDirectory)) { 
-            fs.mkdirSync(targetDirectory, { recursive: true });
-        }
+        // - 確認資料夾是否存在
+        if (!fs.existsSync(targetDirectory)) {  fs.mkdirSync(targetDirectory, { recursive: true }); }
         
         const storage = multer.diskStorage({
             destination: function(req, file, cb) {
@@ -130,3 +129,16 @@ exports.fetchFileContentJson = async (req, res) => {
 
 };
 
+
+// - 儲存已修改的資料
+exports.uploadProcessedFile = async (req, res) => {
+    try {
+        
+        const processedDirectory = path.join(__dirname, '..', 'uploads', 'processed');
+
+        res.status(200).send(req.body);
+    } catch (error) {
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.status(500).send(`[uploadProcessedFile] Error : ${error.message || error}`);
+    }
+}
