@@ -138,9 +138,27 @@ const labelData = () => {
     return (option.label ?? '').toLowerCase().includes(input.toLowerCase());
   };
 
+  // ----- 修改新欄位的 Input
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNewLabel(e.target.value);
   };
+
+  // ----- 對要擷取內容 HighLight, 並修改相關資訊，送到 Fields Input 中
+  const handleTextSelection = (event: React.SyntheticEvent<HTMLTextAreaElement>) => {
+    const textarea = event.currentTarget;
+    const selectedText = textarea.value.substring(textarea.selectionStart, textarea.selectionEnd);
+
+    if (selectedText) {
+      const updatedLabelFields = labelFields.map(field => {
+
+        if (field.name === currentSelectedNewLabel) {
+          return { ...field, value: selectedText };
+        }
+        return field;
+      });
+      setLabelFields(updatedLabelFields);
+    }
+  }
 
   const addLabel = (text: string) => {
 
@@ -152,22 +170,30 @@ const labelData = () => {
     }
 
     // - 確認可儲存
-    const newLabel: FieldsNameItem = { name:text, value:text };
+    const newLabel: FieldsNameItem = { name:text, value:"" };
     setLabelFields(prevLabelFields => [...prevLabelFields, newLabel]);
     setNewLabel("");
   };
 
   // ----- show return.
   const showLabelList = () => {
+    console.log(labelFields);
     return (
       <>
-  
         {labelFields.map((labelField: FieldsNameItem, index: number) => (
-          <Form.Item label={labelField.name} name={labelField.name} key={index}>
-            <Input />
-          </Form.Item>
+          <div key={index} onClick={() => setCurrentSelectedNewLabel(labelField.name)} >
+            <Form.Item 
+              label={
+                <span style={{  color: labelField.name === currentSelectedNewLabel ? 'red' : 'black'  }}>
+                  {labelField.name}
+                </span>
+              } 
+              name={labelField.name}
+            >
+              <Input value="test"  />
+            </Form.Item>
+          </div>
         ))}
-
       </>
     );
   }
@@ -188,6 +214,7 @@ const labelData = () => {
               style={{ height: 600, resize: 'none' }}
               placeholder="欲標記內容"
               value={currentFileContentDisplay}
+              onSelect={handleTextSelection}
             />
           </Card>
         </Col >
@@ -239,7 +266,7 @@ const labelData = () => {
           </Card>
 
           {/* 新增欄位 */}
-          <Card bordered={false} title="新增欄位" className="w-full cursor-default grid gap-4 mb-4">
+          <Card bordered={false} title="新增欄位" className="w-full cursor-default grid gap-4 mb-4" extra={<p>{currentSelectedNewLabel}</p>}>
             <Form form={addLabelForm} name="dynamic_label_form" >
               <Form.List name="labels">
                 {(labelFields) => (
@@ -256,18 +283,7 @@ const labelData = () => {
                 )}
               </Form.List>
                   
-              <Form.Item label="選擇要擷取的欄位" >
-                <Select 
-                  onChange={(value: string) => setCurrentSelectedNewLabel(value)}
-                  value={currentSelectedNewLabel}
-                >
-                  {labelFields.map((labelField: FieldsNameItem, index: number) => (
-                    <Option key={index} value={labelField.name}>
-                      {labelField.name}
-                    </Option>
-                  ))}
-                </Select>
-              </Form.Item>
+
 
               <Form.Item noStyle shouldUpdate >
                 {() => (
