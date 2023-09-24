@@ -292,9 +292,10 @@ const labelData = () => {
     }
   } 
 
-
+  // ----- 換頁
   const changePage = (page: number) => {
-    const index = page - 1; // 將頁碼轉換為索引
+    
+    const index = page - 1; // 將頁碼轉換為索引 = 原因是因為index從0開始，page從1開始
     setCurrentFileContentPage(page);
     setCurrentFileContentJson(fileContentList[index]);
     setCurrentFileContentDisplay(fileContentList[index][fileContentKey]);
@@ -303,9 +304,11 @@ const labelData = () => {
     
     const clearedLabelFields = labelFields.map(field => ({
       ...field,
-      value: ""
+      value: "",
+      regular_expression: ""
     }));
   
+    
     setLabelFields(processContentList[index].processed || clearedLabelFields);
   
   }
@@ -356,6 +359,38 @@ const labelData = () => {
     );
   }
 
+  const handleKeyDown = (event: KeyboardEvent) => {
+    switch (event.key) {
+      case "ArrowRight": // 右鍵
+        if (currentFileContentPage < fileContentList.length) {
+          changePage(currentFileContentPage + 1);
+        }
+        break;
+      case "ArrowLeft": // 左鍵
+        if (currentFileContentPage > 1) {
+          changePage(currentFileContentPage - 1);
+        }
+        break;
+      // 如果需要上下鍵，您可以在這裡添加
+      // case "ArrowUp":
+      //   // 上鍵的邏輯
+      //   break;
+      // case "ArrowDown":
+      //   // 下鍵的邏輯
+      //   break;
+      default:
+        break;
+    }
+  };
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyDown);
+  
+    // 清除事件監聽器
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [currentFileContentPage, fileContentList.length]);
   
   // ----- 進入網頁執行一次
   useEffect(() => {
