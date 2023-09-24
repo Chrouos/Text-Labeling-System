@@ -188,9 +188,9 @@ const labelData = () => {
                   {labelField.name}
                 </span>
               } 
-              name={labelField.name}
+              // name={labelField.name}
             >
-              <Input value="test"  />
+              <TextArea value={labelField.value}  />
             </Form.Item>
           </div>
         ))}
@@ -288,8 +288,9 @@ const labelData = () => {
               <Form.Item noStyle shouldUpdate >
                 {() => (
                   <Typography>
-                    <pre>{JSON.stringify(addLabelForm.getFieldsValue(), null, 2)}</pre>
+                    <pre>{JSON.stringify(labelFields, null, 2)}</pre>
                   </Typography>
+
                 )}
               </Form.Item>
 
@@ -309,11 +310,3 @@ const labelData = () => {
 
 export default labelData;
 
-
-/*
-
-1. 選擇檔案 -> 選擇檔案類型 (jsonLine, jsonFile, line, text) -> 若為 Json 格式選擇欄位，之後顯示行數與內容
-2. 建立想要標記的欄位
-3. 利用滑鼠選取行數 -> Enter 就是下一個
-
-*/
