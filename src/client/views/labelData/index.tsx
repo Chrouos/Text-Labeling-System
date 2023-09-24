@@ -261,9 +261,21 @@ const labelData = () => {
     const selectedText = textarea.value.substring(textarea.selectionStart, textarea.selectionEnd);
 
     if (selectedText) {
+      
         const updatedLabelFields = labelFields.map(field => {
             if (field.name === currentSelectedNewLabel) {
-                return { ...field, value: selectedText };
+
+                // 使用正規表示法擷取前後文
+                const surroundingText = textarea.value.slice(Math.max(0, textarea.selectionStart - 50), textarea.selectionEnd + 50);
+                const regex = new RegExp(`([^，。、]*[，。、]*[^，。、]*${selectedText}[^，。、]*[，。、]*[^，。、]*)`);
+                const match = surroundingText.match(regex);
+                const regular_expression = match ? match[0] : "";
+
+                return { 
+                    ...field, 
+                    value: selectedText, 
+                    regular_expression: regular_expression 
+                };
             }
             return field;
         });
@@ -278,7 +290,8 @@ const labelData = () => {
         };
         setProcessContentList(updatedProcessContentList); 
     }
-  }
+  } 
+
 
   const changePage = (page: number) => {
     const index = page - 1; // 將頁碼轉換為索引
