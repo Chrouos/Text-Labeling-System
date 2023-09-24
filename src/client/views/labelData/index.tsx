@@ -27,6 +27,7 @@ import { handleErrorResponse } from '../../utils';
 import './index.css'
 
 const { TextArea } = Input;
+const { Option } = Select;
 
 // - 定義型態
 type FileNameItem = { value: string; label: string; };
@@ -158,11 +159,17 @@ const labelData = () => {
 
   // ----- show return.
   const showLabelList = () => {
-    return labelFields.map((labelField: FieldsNameItem, index: number) => (
-      <Form.Item label={labelField.name} name={labelField.name} key={index}>
-        <Input />
-      </Form.Item>
-    ));
+    return (
+      <>
+  
+        {labelFields.map((labelField: FieldsNameItem, index: number) => (
+          <Form.Item label={labelField.name} name={labelField.name} key={index}>
+            <Input />
+          </Form.Item>
+        ))}
+
+      </>
+    );
   }
   
   // ----- 進入網頁執行一次
@@ -248,14 +255,30 @@ const labelData = () => {
                   </div>
                 )}
               </Form.List>
+                  
+              <Form.Item label="選擇要擷取的欄位" >
+                <Select 
+                  onChange={(value: string) => setCurrentSelectedNewLabel(value)}
+                  value={currentSelectedNewLabel}
+                >
+                  {labelFields.map((labelField: FieldsNameItem, index: number) => (
+                    <Option key={index} value={labelField.name}>
+                      {labelField.name}
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
 
-              <Form.Item noStyle shouldUpdate>
+              <Form.Item noStyle shouldUpdate >
                 {() => (
                   <Typography>
                     <pre>{JSON.stringify(addLabelForm.getFieldsValue(), null, 2)}</pre>
                   </Typography>
                 )}
               </Form.Item>
+
+
+
             </Form>
           </Card>
 
