@@ -1,4 +1,7 @@
 ## Start.
+
+`npm install`
+
 ```
 yarn dev
 ```
