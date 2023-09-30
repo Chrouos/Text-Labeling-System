@@ -43,3 +43,13 @@
 }
 
 
+
+.ant-btn-action {
+    color: #303a84;
+    border-color: #303a84;
+}
+
+.ant-btn-action:hover {
+    color: #2026546f !important;
+    border-color: #2026546f !important;
+}

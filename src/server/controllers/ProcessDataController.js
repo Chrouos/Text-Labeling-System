@@ -221,3 +221,78 @@ exports.downloadProcessedFile = async (req, res) => {
         res.status(500).send(`[downloadProcessedFile] Error : ${error.message || error}`);
     }
 }
+
+
+// - 全體增加欄位
+exports.addNewLabel_all = async (req, res) => {
+    try {
+        const processedDirectory = path.join(__dirname, '..', 'uploads', 'processed');
+
+        // @ 確認檔案存在
+        if (!fs.existsSync(processedDirectory)) { 
+            fs.mkdirSync(processedDirectory, { recursive: true }); 
+        }
+
+        // @ 轉換格式
+        const contentData = req.body.content; 
+        const newLabel = req.body.newLabel || ""; // 從 req.body 獲取 newLabel，如果不存在，則設為空字符串
+
+        const formattedData = contentData.map(item => {
+            // 如果 item 中有 processed 屬性，則在 processed 中加入 newLabel
+            if(item.processed) {
+                item.processed.push({name: newLabel, value: "", regular_expression: "", regular_expression_match: ""});
+            } else {
+                // 如果 item 中沒有 processed 屬性，則創建一個並加入 newLabel
+                item.processed = [];
+                item.processed.push({name: newLabel, value: "", regular_expression: "", regular_expression_match: ""});
+            }
+            return JSON.stringify(item);
+        }).join('\n');
+        
+
+        // @ 存擋
+        const filePath = path.join(processedDirectory, req.body.fileName);
+        fs.writeFileSync(filePath, formattedData, 'utf8');
+
+        res.status(200).send(req.body);
+    } catch (error) {
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.status(500).send(`[addNewLabel_all] Error : ${error.message || error}`);
+    }
+}
+
+exports.removeLabel_all = async (req, res) => {
+    try {
+        const processedDirectory = path.join(__dirname, '..', 'uploads', 'processed');
+
+        // @ 確認檔案存在
+        if (!fs.existsSync(processedDirectory)) {
+            fs.mkdirSync(processedDirectory, { recursive: true });
+        }
+
+        // @ 轉換格式
+        const contentData = req.body.content;
+        const labelToRemove = req.body.labelToRemove; // 從 req.body 獲取 labelToRemove
+
+        if (!labelToRemove) {
+            throw new Error("labelToRemove not provided");
+        }
+
+        const formattedData = contentData.map(item => {
+            if (item.processed) {
+                // 使用 filter 函數過濾掉要刪除的標籤
+                item.processed = item.processed.filter(label => label.name !== labelToRemove);
+            }
+            return JSON.stringify(item);
+        }).join('\n');
+
+        // @ 存擋
+        const filePath = path.join(processedDirectory, req.body.fileName);
+        fs.writeFileSync(filePath, formattedData, 'utf8');
+
+        res.status(200).send(req.body);
+    } catch (error) {
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.status(500).send(`[removeLabel_all] Error : ${error.message || error}`);
+    }
+}

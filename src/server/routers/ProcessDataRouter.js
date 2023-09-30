@@ -11,6 +11,9 @@ app.post('/processData/fetchFileContentJson', processDataController.fetchFileCon
 app.post('/processData/uploadProcessedFile', processDataController.uploadProcessedFile);
 app.post('/processData/fetchUploadsProcessedFileName', processDataController.fetchUploadsProcessedFileName);
 app.post('/processData/downloadProcessedFile', processDataController.downloadProcessedFile);
+app.post('/processData/addNewLabel_all', processDataController.addNewLabel_all);
+app.post('/processData/removeLabel_all', processDataController.removeLabel_all);
+
 
 
 module.exports = app;

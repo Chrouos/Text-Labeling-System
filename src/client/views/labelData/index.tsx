@@ -10,10 +10,10 @@ import {
   Upload,
   Button,
   Form,
-  Space, 
   Typography,
   Radio,
-  Pagination
+  Pagination,
+  Progress
 } from 'antd';
 import { message } from 'antd';
 import type { UploadProps } from 'antd';
@@ -27,13 +27,15 @@ import { defaultHttp } from '../../utils/http';
 import { apiRoutes } from '../../routes/api';
 import { handleErrorResponse } from '../../utils';
 import './index.css'
+import { FormItemInputContext } from 'antd/es/form/context';
+import { current } from '@reduxjs/toolkit';
 
 const { TextArea } = Input;
 const { Option } = Select;
 
 // - 定義型態
 type FileNameItem = { value: string; label: string; };
-type FieldsNameItem = { name: string; value: string; regular_expression: string; };
+type FieldsNameItem = { name: string; value: string; regular_expression: string; regular_expression_match: string };
 type ProcessedContent = { fileName:string, content: string; processed?: FieldsNameItem[]; };
 
 
@@ -51,8 +53,12 @@ const breadcrumb: BreadcrumbProps = {
 const labelData = () => {
 
   const [addLabelForm] = Form.useForm();
-
   const [messageApi, contextHolder] = message.useMessage();
+
+  // @ Regular Expression Loading Progress
+  const [actionLoading_RE, setActionLoading_RE] = useState(false);
+  const [actionLoading_Progress, setActionLoading_Progress] = useState(0);
+
   const [fileNameList, setFileNameList] = useState<FileNameItem[]>([]);
   const [currentFileName, setCurrentFileName] = useState<string>("");
 
@@ -69,7 +75,9 @@ const labelData = () => {
   const [labelFields, setLabelFields] = useState<FieldsNameItem[]>([]); // = 已新增的欄位 Fields.
   const [currentSelectedNewLabel, setCurrentSelectedNewLabel] = useState<string>(""); // = 選擇的新欄位
 
-  const [isVisible, setIsVisible] = useState<boolean[]>([true, true, true]);
+  const [REFormula, setReFormula] = useState<string>("");
+
+  const [isVisible, setIsVisible] = useState<boolean[]>([true, true, true, true]);
   const chooseIsVisible = (index: number) => {
     return (event: React.MouseEvent<HTMLElement>) => {
       const newIsVisible = [...isVisible];
@@ -127,8 +135,8 @@ const labelData = () => {
     defaultHttp.post(apiRoutes.fetchUploadsProcessedFileName, request)
       .then((response) => {
         setProcessContentList(response.data);
-        if (response?.data?.[0]?.processed) {
-          setLabelFields(response.data[0].processed);
+        if (response?.data?.[currentFileContentPage - 1]?.processed) {
+          setLabelFields(response.data[currentFileContentPage - 1].processed);
         }
       })
       .catch((error) => {
@@ -141,59 +149,97 @@ const labelData = () => {
     
     const request = {
       fileName: currentFileName,
-      content:processContentList
+      content: processContentList
     }
 
     defaultHttp.post(apiRoutes.uploadProcessedFile, request)
-      .then((response) => { })
+      .then((response) => {
+        fetchProcessedFileContent(currentFileName);
+       })
       .catch((error) => {
         handleErrorResponse(error);
       }).finally(() => {});
   }
 
-    // ----- API -> 下載檔案
-    const downloadProcessedFile = async () => {
+  // ----- API -> 增加欄位
+  const addNewLabel_all = async (newLabel: string) => {
     
-      const request = {
-        fileName: currentFileName,
-      }
-  
-      defaultHttp.post(apiRoutes.downloadProcessedFile, request)
-        .then((response) => {
-
-            console.log(response)
-
-            // - 假設 response.data 為 binary
-            const blob = new Blob([response.data], { type: 'application/octet-stream' }); // 請根據你的檔案類型調整 MIME 類型
-            const url = URL.createObjectURL(blob);
-
-            // - 創建一個 <a> 標籤來觸發檔案下載
-            const a = document.createElement('a');
-            a.href = url;
-
-            // - 增加下載時間
-            const contentDisposition = response.headers['content-disposition'];
-            let fileName = currentFileName;
-            if (contentDisposition) {
-                const match = contentDisposition.match(/filename="?(.+)"?$/);
-                if (match && match[1]) {
-                    fileName = match[1];
-                }
-            }
-
-            a.download = fileName;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-
-            // - 釋放 URL
-            URL.revokeObjectURL(url);
-
-         })
-        .catch((error) => {
-          handleErrorResponse(error);
-        }).finally(() => {});
+    const request = {
+      fileName: currentFileName,
+      content:processContentList,
+      newLabel: newLabel
     }
+
+    defaultHttp.post(apiRoutes.addNewLabel_all, request)
+      .then((response) => { 
+        fetchProcessedFileContent(currentFileName);
+      })
+      .catch((error) => {
+        handleErrorResponse(error);
+      }).finally(() => {});
+  }
+
+  // ----- API -> 刪除欄位
+  const removeLabel_all = async (labelToRemove: string) => {
+    
+    const request = {
+      fileName: currentFileName,
+      content:processContentList,
+      labelToRemove: labelToRemove
+    }
+
+    defaultHttp.post(apiRoutes.removeLabel_all, request)
+      .then((response) => {
+        fetchProcessedFileContent(currentFileName);
+       })
+      .catch((error) => {
+        handleErrorResponse(error);
+      }).finally(() => {});
+  }
+
+  // ----- API -> 下載檔案
+  const downloadProcessedFile = async () => {
+    
+    const request = {
+      fileName: currentFileName,
+    }
+
+    defaultHttp.post(apiRoutes.downloadProcessedFile, request)
+      .then((response) => {
+
+          console.log(response)
+
+          // - 假設 response.data 為 binary
+          const blob = new Blob([response.data], { type: 'application/octet-stream' }); // 請根據你的檔案類型調整 MIME 類型
+          const url = URL.createObjectURL(blob);
+
+          // - 創建一個 <a> 標籤來觸發檔案下載
+          const a = document.createElement('a');
+          a.href = url;
+
+          // - 增加下載時間
+          const contentDisposition = response.headers['content-disposition'];
+          let fileName = currentFileName;
+          if (contentDisposition) {
+              const match = contentDisposition.match(/filename="?(.+)"?$/);
+              if (match && match[1]) {
+                  fileName = match[1];
+              }
+          }
+
+          a.download = fileName;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+
+          // - 釋放 URL
+          URL.revokeObjectURL(url);
+
+        })
+      .catch((error) => {
+        handleErrorResponse(error);
+      }).finally(() => {});
+  }
 
 
   // ----- API -> 刪除檔案
@@ -205,6 +251,8 @@ const labelData = () => {
       .then((response) => { 
         fetchFiles();
         setCurrentFileName("");
+        setCurrentFileContentDisplay("");
+        setFileContentFields([]);
         messageApi.success("刪除成功");
 
       })
@@ -216,9 +264,11 @@ const labelData = () => {
 
   // ----- 選擇檔案
   const chooseTheFile = (selectedValue: string) => {
+    setCurrentFileContentPage(1);
     fetchFileContent(selectedValue);
     fetchProcessedFileContent(selectedValue);
     setCurrentFileName(selectedValue);
+    setLabelFields([]);
   }
 
   // ----- 上傳檔案的資料
@@ -254,12 +304,17 @@ const labelData = () => {
     return (option.label ?? '').toLowerCase().includes(input.toLowerCase());
   };
 
-  // ----- 修改新欄位的 Input
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // ----- handle -> 修改新欄位的 Input
+  const handleNewLabelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNewLabel(e.target.value);
   };
 
-  // ----- 對要擷取內容 HighLight, 並修改相關資訊，送到 Fields Input 中
+  // ----- handle -> 修改 re 公式
+  const handleREFormulaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setReFormula(e.target.value);
+  }
+
+  // ----- handle -> 對要擷取內容 HighLight, 並修改相關資訊，送到 Fields Input 中
   const handleTextSelection = (event: React.SyntheticEvent<HTMLTextAreaElement>) => {
     const textarea = event.currentTarget;
     const selectedText = textarea.value.substring(textarea.selectionStart, textarea.selectionEnd);
@@ -278,7 +333,7 @@ const labelData = () => {
                 return { 
                     ...field, 
                     value: selectedText, 
-                    regular_expression: regular_expression 
+                    regular_expression: regular_expression,
                 };
             }
 
@@ -304,18 +359,17 @@ const labelData = () => {
     setCurrentFileContentPage(page);
     setCurrentFileContentJson(fileContentList[index]);
     setCurrentFileContentDisplay(fileContentList[index][fileContentKey]);
-    uploadProcessedFile();
+    
 
-    console.log("🚀 ~ file: index.tsx:311 ~ clearedLabelFields ~ labelFields:", labelFields)
-
+    // - 修改 processed List. 
     const clearedLabelFields = labelFields.map(field => ({
       name: field.name,
       value: "",
-      regular_expression: ""
+      regular_expression: "",
+      regular_expression_match: ""
     }));
 
     let newClearedLabelFields: FieldsNameItem[] = [...clearedLabelFields]; 
-
     const processed = processContentList[index]?.processed;
     if (processed) {
       for (let item of processed) {
@@ -329,6 +383,7 @@ const labelData = () => {
                 name: item.name,
                 value: item.value,
                 regular_expression: item.regular_expression,
+                regular_expression_match: item.regular_expression_match,
             });
         }
         // 如果 clearedLabelFields 中已有該項目，則覆蓋
@@ -337,15 +392,52 @@ const labelData = () => {
             if (indexToUpdate !== -1) {
                 newClearedLabelFields[indexToUpdate].value = item.value;
                 newClearedLabelFields[indexToUpdate].regular_expression = item.regular_expression;
+                newClearedLabelFields[indexToUpdate].regular_expression_match = item.regular_expression_match;
             }
         }
       }
     } 
     
     setLabelFields(newClearedLabelFields);
-  
   }
 
+  const reAction  = () => {
+
+    // - Loading Progress
+    setActionLoading_RE(true);
+    setActionLoading_Progress(10); // 開始進度條至 10%
+    
+    const rExp: RegExp = new RegExp(REFormula, 'g');
+
+    // - for - 透過迴圈將每一個 fileContentList 的元素進行擷取
+    const newLabelFields = processContentList.map((processContent, index) => {
+
+      const preREContent = fileContentList[index][fileContentKey]
+      const match = rExp.exec(preREContent)
+      if (processContent['processed'] ) {
+
+        // 搜尋並更新 process 中的適當物件
+        processContent['processed'].forEach((field: FieldsNameItem) => {
+          if (field.name === currentSelectedNewLabel) {
+            if(match) field.regular_expression_match = match[0];
+            else field.regular_expression_match = "";
+          }
+        });
+      }
+
+      setActionLoading_Progress(10 + (90 * (index + 1) / processContentList.length)); // 設定進度條根據目前的迴圈狀態
+      return processContent;
+    });
+
+    async function handleProcessAndUpload() {
+      await setProcessContentList(newLabelFields);
+      uploadProcessedFile();
+    }
+  
+    handleProcessAndUpload();
+    // setActionLoading_RE(false);
+
+  }
 
   const addLabel = (text: string) => {
 
@@ -357,17 +449,19 @@ const labelData = () => {
     }
 
     // - 確認可儲存
-    const newLabel: FieldsNameItem = { name:text, value:"", regular_expression: "" };
+    const newLabel: FieldsNameItem = { name:text, value:"", regular_expression: "", regular_expression_match: "" };
     setLabelFields(prevLabelFields => [...prevLabelFields, newLabel]);
     setNewLabel("");
+    addNewLabel_all(text);
   };
 
   // ----- show return.
   const showLabelList = () => {
 
-    const handleDelete = (indexToDelete: number) => {
+    const handleDelete = (indexToDelete: number, labelName:string) => {
       const updatedLabelFields = labelFields.filter((_, index) => index !== indexToDelete);
       setLabelFields(updatedLabelFields); 
+      removeLabel_all(labelName);
     };
     
     return (
@@ -383,7 +477,7 @@ const labelData = () => {
             >
               <div className='grid grid-cols-12 gap-4'>
                 <TextArea value={labelField.value} className="col-span-11" />
-                <button onClick={() => handleDelete(index)}><DeleteOutlined /></button> 
+                <button onClick={() => handleDelete(index, labelField.name)}><DeleteOutlined /></button> 
               </div>
             </Form.Item>
           </div>
@@ -408,7 +502,6 @@ const labelData = () => {
     }
   };
 
-  useEffect(()=>{ console.log("labelFields", labelFields)}, [labelFields])
 
   
   // useEffect(() => {
@@ -428,30 +521,37 @@ const labelData = () => {
   return (
     <BasePageContainer breadcrumb={breadcrumb} transparent={true} 
       extra={ <>
-        <Button onClick={chooseIsVisible(0)} className={isVisible[0] ? 'ant-btn-beChosen' : 'ant-btn-notChosen'}>選擇檔案</Button>
-        <Button onClick={chooseIsVisible(1)} className={isVisible[1] ? 'ant-btn-beChosen' : 'ant-btn-notChosen'}>選擇欄位</Button>
-        <Button onClick={chooseIsVisible(2)} className={isVisible[2] ? 'ant-btn-beChosen' : 'ant-btn-notChosen'}>新增欄位</Button>
+        <Button onClick={chooseIsVisible(0)} className={isVisible[0] ? 'ant-btn-beChosen' : 'ant-btn-notChosen'}>Uploads</Button>
+        <Button onClick={chooseIsVisible(1)} className={isVisible[1] ? 'ant-btn-beChosen' : 'ant-btn-notChosen'}>Fields</Button>
+        <Button onClick={chooseIsVisible(2)} className={isVisible[2] ? 'ant-btn-beChosen' : 'ant-btn-notChosen'}>Add Label</Button>
+        <Button onClick={chooseIsVisible(3)} className={isVisible[3] ? 'ant-btn-beChosen' : 'ant-btn-notChosen'}>Regular Expression</Button>
       </> } >
       <Row gutter={24}>
         
         <Col xl={14} lg={14} md={14} sm={24} xs={24} style={{ marginBottom: 24 }} >
           <Card bordered={false} className="w-full h-full cursor-default">
-          <Pagination 
-            className='mb-4' 
-            pageSize={1} 
-            current={currentFileContentPage} 
-            total={fileContentList.length} 
-            defaultCurrent={1}
-            onChange={(page, pageSize) => changePage(page)}
-            simple />
+          <div className='grid gap-2 mb-4 grid-cols-5'>
+            <Pagination 
+              className='w-full mb-4 col-span-4' 
+              pageSize={1} 
+              current={currentFileContentPage} 
+              total={fileContentList.length} 
+              defaultCurrent={1}
+              onChange={(page, pageSize) => changePage(page)}
+              simple />
+
+              {/* <Button className="w-full ant-btn-check" disabled={currentFileName == ""} onClick={uploadProcessedFile}>Store</Button> */}
+          </div>
 
             <TextArea
               className='h-full'
               showCount
-              style={{ height: 500, marginBottom: 24 }}
+              style={{ height: 600, marginBottom: 24 }}
               placeholder="欲標記內容"
               value={currentFileContentDisplay}
               onSelect={handleTextSelection} />
+
+            
           </Card>
         </Col >
 
@@ -459,7 +559,7 @@ const labelData = () => {
 
           {/* 選擇檔案 + 上傳 */}
           {isVisible[0] && <>
-            <Card bordered={false} className="w-full cursor-default grid gap-4 mb-4"  title={"選擇檔案 or 上傳"} 
+            <Card bordered={false} className="w-full cursor-default grid gap-4 mb-4"  title={"Uploads"} 
               extra={<Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(0)}></Button>}>
                 <div className='grid grid-cols-4 gap-4'>
                     <Select className='w-full mb-4 col-span-2' 
@@ -486,7 +586,7 @@ const labelData = () => {
 
           {/* 選擇欄位 */}
           { isVisible[1] && <>
-            <Card bordered={false} title="選擇欄位" className="w-full cursor-default grid gap-4 mb-4"
+            <Card bordered={false} title="Fields" className="w-full cursor-default grid gap-4 mb-4"
               extra={<Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(1)}></Button>}>
             
               <Radio.Group defaultValue={fileContentFields[0] || ""}
@@ -510,7 +610,7 @@ const labelData = () => {
 
           {/* 新增欄位 */}
           { isVisible[2] && <>
-            <Card bordered={false} title="新增欄位" className="w-full cursor-default grid gap-4 mb-4" 
+            <Card bordered={false} title="Add Label" className="w-full cursor-default grid gap-4 mb-4" 
               extra={<p>{currentSelectedNewLabel} <Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(2)}></Button></p>}>
               
                 <Form form={addLabelForm} name="dynamic_label_form" >
@@ -520,7 +620,7 @@ const labelData = () => {
                         {showLabelList()}
 
                         <div className='grid grid-cols-2 gap-4'>
-                          <Input addonBefore="name" value={newLabel} onChange={handleChange}/>
+                          <Input addonBefore="name" value={newLabel} onChange={handleNewLabelChange}/>
                           <Button type="dashed" onClick={() => {addLabel(newLabel)}} block disabled={!newLabel}> 
                             + Add Item 
                           </Button>
@@ -542,9 +642,26 @@ const labelData = () => {
             </Card>
           </> }
 
+          { isVisible[3] && <>
+            <Card bordered={false} title="Regular Expression" className="w-full cursor-default grid gap-4 mb-4"
+              extra={<Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(3)}></Button>}>
+
+                <div className='grid gap-2 mb-4 grid-cols-5'>
+                  <Input 
+                    className='w-full mb-4 col-span-4'
+                    addonBefore="/" addonAfter="/g" value={REFormula} onChange={handleREFormulaChange}/>
+                  <Button className="w-full ant-btn-action" 
+                    disabled={ fileContentKey == "" || fileContentKey == undefined || currentFileName == undefined || currentFileName == "" || currentSelectedNewLabel == "" } 
+                    onClick={reAction}>Action</Button>
+                </div>
+                {actionLoading_RE && <Progress percent={actionLoading_Progress} />}
+            </Card>
+           </> }
+
         </Col>
 
       </Row>
+
 
       {contextHolder}
 
