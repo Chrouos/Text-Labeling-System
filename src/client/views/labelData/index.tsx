@@ -540,7 +540,7 @@ const labelData = () => {
               onChange={(page, pageSize) => changePage(page)}
               simple />
 
-              {/* <Button className="w-full ant-btn-check" disabled={currentFileName == ""} onClick={uploadProcessedFile}>Store</Button> */}
+              <Button className="w-full ant-btn-check" disabled={currentFileName == ""} onClick={uploadProcessedFile}>Store</Button>
           </div>
 
             <TextArea
