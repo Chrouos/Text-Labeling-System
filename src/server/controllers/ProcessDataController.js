@@ -1,4 +1,6 @@
 const ConfigCrypto = require('../tools/ConfigCrypto')
+const { OpenAI } = require("openai");
+
 const fs = require('fs')
 const path = require('path')
 const multer = require('multer');
@@ -12,8 +14,6 @@ function now_formatDate() {
     const mi = String(date.getMinutes()).padStart(2, '0'); // Minutes
     return yyyy + mm + dd + hh + mi;
 }
-
-
 
 // -------------------- 儲存檔案
 exports.uploadTheFile = async (req, res) => {
@@ -294,5 +294,40 @@ exports.removeLabel_all = async (req, res) => {
     } catch (error) {
         res.setHeader('Content-Type', 'text/plain; charset=utf-8');
         res.status(500).send(`[removeLabel_all] Error : ${error.message || error}`);
+    }
+}
+
+
+exports.gptRetrieve = async (req, res) => {
+    try {
+
+        const requestData = req.body; // Data from the request.
+        const messageList = [{
+            "role": "user",
+            "content": requestData.content
+        }]
+
+        // - 獲得 OpenAI API
+        const configCrypto = new ConfigCrypto();
+        const OPENAI_API_KEY = configCrypto.config.GPT_KEY; // Get OpenAI API key
+        const openai = new OpenAI({
+            apiKey: OPENAI_API_KEY // This is also the default, can be omitted
+          });
+
+        // ! 產生可能會需要一點時間
+        const response = await openai.chat.completions.create({
+            model: "gpt-3.5-turbo",
+            messages: messageList,
+            temperature: 0.1,
+            max_tokens: 1024,
+            top_p: 1,
+            frequency_penalty: 0,
+            presence_penalty: 0
+        });
+        
+        res.status(500).send(response.choices[0].message);
+    } catch (error) {
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.status(500).send(`[gptRetrieve] Error : ${error.message || error}`);
     }
 }

@@ -13,6 +13,8 @@ app.post('/processData/fetchUploadsProcessedFileName', processDataController.fet
 app.post('/processData/downloadProcessedFile', processDataController.downloadProcessedFile);
 app.post('/processData/addNewLabel_all', processDataController.addNewLabel_all);
 app.post('/processData/removeLabel_all', processDataController.removeLabel_all);
+app.post('/processData/gptRetrieve', processDataController.gptRetrieve);
+
 
 
 

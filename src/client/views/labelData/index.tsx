@@ -532,6 +532,7 @@ const labelData = () => {
         <Button onClick={chooseIsVisible(1)} className={isVisible[1] ? 'ant-btn-beChosen' : 'ant-btn-notChosen'}>Fields</Button>
         <Button onClick={chooseIsVisible(2)} className={isVisible[2] ? 'ant-btn-beChosen' : 'ant-btn-notChosen'}>Add Label</Button>
         <Button onClick={chooseIsVisible(3)} className={isVisible[3] ? 'ant-btn-beChosen' : 'ant-btn-notChosen'}>Regular Expression</Button>
+        <Button onClick={chooseIsVisible(4)} className={isVisible[4] ? 'ant-btn-beChosen' : 'ant-btn-notChosen'}>GPT</Button>
       </> } >
       <Row gutter={24}>
         
