@@ -35,7 +35,7 @@ const { Option } = Select;
 
 // - 定義型態
 type FileNameItem = { value: string; label: string; };
-type FieldsNameItem = { name: string; value: string; regular_expression: string; regular_expression_match: string };
+type FieldsNameItem = { name: string; value: string; the_surrounding_words: string; regular_expression_match: string, regular_expression_formula: string };
 type ProcessedContent = { fileName:string, content: string; processed?: FieldsNameItem[]; };
 
 
@@ -77,7 +77,7 @@ const labelData = () => {
 
   const [REFormula, setReFormula] = useState<string>("");
 
-  const [isVisible, setIsVisible] = useState<boolean[]>([true, true, true, true]);
+  const [isVisible, setIsVisible] = useState<boolean[]>([true, true, true, false, false]);
   const chooseIsVisible = (index: number) => {
     return (event: React.MouseEvent<HTMLElement>) => {
       const newIsVisible = [...isVisible];
@@ -85,8 +85,6 @@ const labelData = () => {
       setIsVisible(newIsVisible);
     };
   }
-  
-  
 
   // ----- API -> 抓取在 uploads/files 裡面的資料名稱
   const fetchFiles = async () => {
@@ -328,12 +326,12 @@ const labelData = () => {
                 const surroundingText = textarea.value.slice(Math.max(0, textarea.selectionStart - 50), textarea.selectionEnd + 50);
                 const regex = new RegExp(`([^，。、]*[，。、]*[^，。、]*${selectedText}[^，。、]*[，。、]*[^，。、]*)`);
                 const match = surroundingText.match(regex);
-                const regular_expression = match ? match[0] : "";
+                const the_surrounding_words = match ? match[0] : "";
 
                 return { 
                     ...field, 
                     value: selectedText, 
-                    regular_expression: regular_expression,
+                    the_surrounding_words: the_surrounding_words,
                 };
             }
 
@@ -365,8 +363,9 @@ const labelData = () => {
     const clearedLabelFields = labelFields.map(field => ({
       name: field.name,
       value: "",
-      regular_expression: "",
-      regular_expression_match: ""
+      the_surrounding_words: "",
+      regular_expression_match: "",
+      regular_expression_formula: ""
     }));
 
     let newClearedLabelFields: FieldsNameItem[] = [...clearedLabelFields]; 
@@ -382,8 +381,9 @@ const labelData = () => {
             newClearedLabelFields.push({
                 name: item.name,
                 value: item.value,
-                regular_expression: item.regular_expression,
+                the_surrounding_words: item.the_surrounding_words,
                 regular_expression_match: item.regular_expression_match,
+                regular_expression_formula: item.regular_expression_formula,
             });
         }
         // 如果 clearedLabelFields 中已有該項目，則覆蓋
@@ -391,8 +391,9 @@ const labelData = () => {
             const indexToUpdate = newClearedLabelFields.findIndex(field => field.name === item.name);
             if (indexToUpdate !== -1) {
                 newClearedLabelFields[indexToUpdate].value = item.value;
-                newClearedLabelFields[indexToUpdate].regular_expression = item.regular_expression;
+                newClearedLabelFields[indexToUpdate].the_surrounding_words = item.the_surrounding_words;
                 newClearedLabelFields[indexToUpdate].regular_expression_match = item.regular_expression_match;
+                newClearedLabelFields[indexToUpdate].regular_expression_formula = item.regular_expression_formula;
             }
         }
       }
@@ -419,7 +420,10 @@ const labelData = () => {
         // 搜尋並更新 process 中的適當物件
         processContent['processed'].forEach((field: FieldsNameItem) => {
           if (field.name === currentSelectedNewLabel) {
-            if(match) field.regular_expression_match = match[0];
+
+            field.regular_expression_formula = REFormula;
+
+            if(match) field.regular_expression_match = match[1] || "";
             else field.regular_expression_match = "";
           }
         });
@@ -449,7 +453,7 @@ const labelData = () => {
     }
 
     // - 確認可儲存
-    const newLabel: FieldsNameItem = { name:text, value:"", regular_expression: "", regular_expression_match: "" };
+    const newLabel: FieldsNameItem = { name:text, value:"", the_surrounding_words: "", regular_expression_match: "", regular_expression_formula: ""};
     setLabelFields(prevLabelFields => [...prevLabelFields, newLabel]);
     setNewLabel("");
     addNewLabel_all(text);
@@ -467,7 +471,10 @@ const labelData = () => {
     return (
       <>
         {labelFields.map((labelField: FieldsNameItem, index: number) => (
-          <div key={index} onClick={() => setCurrentSelectedNewLabel(labelField.name)} >
+          <div key={index} onClick={() => {
+            if(labelField.name == currentSelectedNewLabel) setCurrentSelectedNewLabel("")
+            else setCurrentSelectedNewLabel(labelField.name) }} >
+
             <Form.Item 
               label={
                 <span style={{  color: labelField.name === currentSelectedNewLabel ? 'red' : 'black'  }}>
@@ -655,6 +662,16 @@ const labelData = () => {
                     onClick={reAction}>Action</Button>
                 </div>
                 {actionLoading_RE && <Progress percent={actionLoading_Progress} />}
+            </Card>
+           </> }
+
+           
+          { isVisible[4] && <>
+            <Card bordered={false} title="Regular Expression" className="w-full cursor-default grid gap-4 mb-4"
+              extra={<Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(4)}></Button>}>
+
+              <Button className="w-full ant-btn-action" >GPT</Button>
+
             </Card>
            </> }
 

@@ -240,11 +240,11 @@ exports.addNewLabel_all = async (req, res) => {
         const formattedData = contentData.map(item => {
             // 如果 item 中有 processed 屬性，則在 processed 中加入 newLabel
             if(item.processed) {
-                item.processed.push({name: newLabel, value: "", regular_expression: "", regular_expression_match: ""});
+                item.processed.push({name: newLabel, value: "", the_surrounding_words: "", regular_expression_match: "", regular_expression_formula: ""});
             } else {
                 // 如果 item 中沒有 processed 屬性，則創建一個並加入 newLabel
                 item.processed = [];
-                item.processed.push({name: newLabel, value: "", regular_expression: "", regular_expression_match: ""});
+                item.processed.push({name: newLabel, value: "", the_surrounding_words: "", regular_expression_match: "", regular_expression_formula: ""});
             }
             return JSON.stringify(item);
         }).join('\n');
