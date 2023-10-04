@@ -1,11 +1,13 @@
 .ant-btn-check {
     color: #00b706;
     border-color: #00b706;
+    background-color: transparent;
 }
 
 .ant-btn-check:hover {
-    color: #00b70682 !important;
-    border-color: #00b70682 !important;
+    color: #02720582 !important;
+    border-color: #02720582 !important;
+    background-color: #00b70600 !important;
 }
 
 .ant-upload {

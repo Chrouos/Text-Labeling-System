@@ -1,4 +1,4 @@
 node_modules/
 /.vscode/
 
-src/server/uploads/processed/*
+src/server/uploads/processed/

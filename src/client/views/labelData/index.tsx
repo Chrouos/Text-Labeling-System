@@ -13,7 +13,8 @@ import {
   Typography,
   Radio,
   Pagination,
-  Progress
+  Progress,
+  Modal
 } from 'antd';
 import { message } from 'antd';
 import type { UploadProps } from 'antd';
@@ -37,6 +38,15 @@ const { Option } = Select;
 type FileNameItem = { value: string; label: string; };
 type FieldsNameItem = { name: string; value: string; the_surrounding_words: string; regular_expression_match: string, regular_expression_formula: string };
 type ProcessedContent = { fileName:string, content: string; processed?: FieldsNameItem[]; };
+type ModalFormatter = {
+  isOpen: boolean;
+  title: string;
+  ok: { onClick: (e?: React.MouseEvent<HTMLButtonElement>) => void; };
+  cancel: { onClick: (e?: React.MouseEvent<HTMLButtonElement>) => void; };
+  icon: JSX.Element;
+  confirmLoading: boolean;
+  message: string;
+};
 
 
 // - 頁面順序
@@ -51,6 +61,8 @@ const breadcrumb: BreadcrumbProps = {
 
 
 const labelData = () => {
+
+  // -------------------------------------------------- Fields Setting 
 
   const [addLabelForm] = Form.useForm();
   const [messageApi, contextHolder] = message.useMessage();
@@ -85,6 +97,27 @@ const labelData = () => {
       setIsVisible(newIsVisible);
     };
   }
+
+  const [modal, modalContextHolder] = Modal.useModal();
+  const [modalSetting, setModalSetting] = useState<ModalFormatter>({
+    isOpen: false, 
+    title: "Titles", 
+    ok: {
+      onClick: () => {console.log("OK!")}
+    }, 
+    cancel: {
+      onClick: () => closeModal()
+    }, 
+    icon: <CheckOutlined />, 
+    confirmLoading: false, 
+    message: "This is the default modal setting."
+  });
+  const closeModal = () => {
+    setModalSetting((prevState: ModalFormatter) => ({...prevState, isOpen: false}))
+  }
+  
+
+  // -------------------------------------------------- API
 
   // ----- API -> 抓取在 uploads/files 裡面的資料名稱
   const fetchFiles = async () => {
@@ -258,7 +291,8 @@ const labelData = () => {
         handleErrorResponse(error);
       }).finally(() => {});
   }
-    
+  
+  // -------------------------------------------------- General Functions.
 
   // ----- 選擇檔案
   const chooseTheFile = (selectedValue: string) => {
@@ -509,7 +543,6 @@ const labelData = () => {
     }
   };
 
-
   
   // useEffect(() => {
   //   window.addEventListener("keydown", handleKeyDown);
@@ -581,7 +614,26 @@ const labelData = () => {
                     <Button className="w-full ant-btn-check"  icon={<DownloadOutlined />} onClick={downloadProcessedFile}> 
                       <span className="btn-text">Down</span> 
                     </Button>
-                    <Button className="w-full ant-btn-delete"  icon={<DeleteOutlined />} onClick={deleteFile} > 
+                    <Button 
+                      className="w-full ant-btn-delete"  
+                      icon={<DeleteOutlined />} 
+                      disabled={!currentFileName}
+                      onClick={ () => {
+                        setModalSetting((prevState: ModalFormatter) => ({
+                          ...prevState,
+                          isOpen: true,
+                          title: "刪除",
+                          ok: {
+                            onClick: async () => {
+                              await deleteFile();
+                              closeModal();
+                            }
+                          },
+                          icon: <DeleteOutlined />,
+                          confirmLoading: false,
+                          message: "你確定要刪除這個檔案嗎?"
+                        }))
+                    }} > 
                       <span className="btn-text">Delete</span> 
                     </Button>
                 </div>
@@ -680,6 +732,15 @@ const labelData = () => {
 
       </Row>
 
+      <Modal 
+        open={modalSetting.isOpen} 
+        onCancel={modalSetting.cancel.onClick} 
+        title= {<> {modalSetting.icon} {modalSetting.title}</>}
+        okButtonProps={{className: "ant-btn-check"}}
+        onOk={modalSetting.ok.onClick}
+      >
+        {modalSetting.message}
+      </Modal>
 
       {contextHolder}
 
