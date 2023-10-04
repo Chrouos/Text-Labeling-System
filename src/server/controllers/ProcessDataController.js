@@ -298,7 +298,7 @@ exports.removeLabel_all = async (req, res) => {
 }
 
 
-exports.gptRetrieve = async (req, res) => {
+exports.test_GPT = async (req, res) => {
     try {
 
         const requestData = req.body; // Data from the request.
@@ -330,4 +330,65 @@ exports.gptRetrieve = async (req, res) => {
         res.setHeader('Content-Type', 'text/plain; charset=utf-8');
         res.status(500).send(`[gptRetrieve] Error : ${error.message || error}`);
     }
+}
+
+
+
+exports.gptRetrieve = async (req, res) => {
+    try {
+
+        // - 1. text, 把大量文本拆成 2048 以下的 token 數量，成為 List
+        const originalText = req.params.text;
+        var textList = []
+        
+
+        // - 2. 將 text List 送給 GPT做批量 retrieve
+
+        // - 3. 將檢索成功的 value 套回到 labelFields.
+    
+        
+        res.status(500).send(response.choices[0].message);
+    } catch (error) {
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.status(500).send(`[gptRetrieve] Error : ${error.message || error}`);
+    }
+}
+
+function splitText(text, input_token=2048) {
+
+    const maxTokens = input_token; // = 希望不要超過的 token 數量
+    const punctuation = ['。', '！', '？', '.', '!', '?', '，', '、']; // = 斷點的標點符號
+
+    var textList_result = [];
+    var startIdx = 0, endIdx = maxTokens;
+
+    // - 走完 全部的text
+    while ( startIdx < text.length ){
+
+        // @ 如果最後的節點超過了則，返回最後的節點
+        if (endIdx >= text.length) {
+            endIdx = text.length;
+        }
+
+        // @ 若沒有超過最後的節點，則繼續
+        else {
+            
+            // @ 尋找最靠近 maxToken 的 標點符號(punctuation)，來分割
+            while ( !punctuation.includes(text[endIdx]) && endIdx > startIdx ) { 
+                endIdx--;
+            }
+
+            // @ startIdx, endIdx -> ...2048... (punctuation) 
+            if (endIdx === startIdx) endIdx = startIdx + maxTokens; // = 若找不到就取最長
+            else endIdx++ ; // = 標點符號也納進來了 
+
+        }
+
+        // @ 擷取完的資料送進去
+        textList_result.push(text.slice(startIdx, endIdx));
+        startIdx = endIdx;
+        endIdx = startIdx = maxTokens;
+    }
+
+    return textList_result;
 }
