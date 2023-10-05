@@ -337,17 +337,21 @@ exports.test_GPT = async (req, res) => {
 exports.gptRetrieve = async (req, res) => {
     try {
 
+        // - Data Preparation
+        const requestData = req.body;
+        var responseData = {};
+
         // - 1. text, 把大量文本拆成 2048 以下的 token 數量，成為 List
-        const originalText = req.params.text;
-        var textList = []
-        
+        const originalText = req.body.content;
+        var textList = splitText(originalText)
 
         // - 2. 將 text List 送給 GPT做批量 retrieve
+
 
         // - 3. 將檢索成功的 value 套回到 labelFields.
     
         
-        res.status(500).send(response.choices[0].message);
+        res.status(500).send(textList);
     } catch (error) {
         res.setHeader('Content-Type', 'text/plain; charset=utf-8');
         res.status(500).send(`[gptRetrieve] Error : ${error.message || error}`);
@@ -384,10 +388,10 @@ function splitText(text, input_token=2048) {
 
         }
 
-        // @ 擷取完的資料送進去
+        // @ 擷取完的資料送進去 console.log(startIdx, endIdx)
         textList_result.push(text.slice(startIdx, endIdx));
         startIdx = endIdx;
-        endIdx = startIdx = maxTokens;
+        endIdx = startIdx + maxTokens;
     }
 
     return textList_result;
