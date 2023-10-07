@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "scripts": {
+    "default": "NODE_ENV=default nodemon src/server/main.js -w src/server",
     "dev": "NODE_ENV=development nodemon src/server/main.js -w src/server",
     "windows": "cross-env NODE_ENV=development nodemon src/server/main.js -w src/server",
     "start": "NODE_ENV=production node src/server/main.js",

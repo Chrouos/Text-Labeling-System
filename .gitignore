@@ -3,4 +3,4 @@ node_modules/
 
 src/server/uploads/processed/
 
-/src/server/config/
+/src/server/config/development.js
