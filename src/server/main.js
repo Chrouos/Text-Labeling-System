@@ -17,6 +17,12 @@ app.use(express.json()); // Parse the JSON request body
 // -------------------- Server Settings
 const port = configCrypto.config.PORT || 8280;
 let hostname = 'localhost';
+app.get('/api/config', (req, res) => {
+  res.json({
+    HOSTNAME: hostname,
+    PORT: port
+  });
+});
 
 // -------------------- routers list --------------------
 const processDataRouter = require('./routers/ProcessDataRouter')
