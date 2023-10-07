@@ -1,8 +1,7 @@
 import { AxiosError } from 'axios';
 import { toast } from 'sonner';
 
-export const API_URL = `http://140.115.54.38:4567`;
-
+export const API_URL = `http://localhost:4567`;
 
 export enum NotificationType {
   ERROR = 'error',
