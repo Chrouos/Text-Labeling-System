@@ -95,7 +95,6 @@ exports.fetchUploadsProcessedFileName = async (req, res) => {
 
         // @ 3. 讀取檔案
         if (targetFile) {
-            console.log(targetFile);
             const filePath = path.join(processedDirectory, targetFile);
             const fileContent = fs.readFileSync(filePath, 'utf8');
             const jsonLines = fileContent.trim().split('\n').map(line => JSON.parse(line));
@@ -156,7 +155,6 @@ exports.fetchFileContentJson = async (req, res) => {
 
         // @ 3. 讀取檔案
         if (targetFile) {
-            console.log(targetFile);
             const filePath = path.join(targetDirectory, targetFile);
             const fileContent = fs.readFileSync(filePath, 'utf8');
             const jsonLines = fileContent.trim().split('\n').map(line => JSON.parse(line));

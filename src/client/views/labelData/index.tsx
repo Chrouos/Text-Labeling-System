@@ -14,7 +14,8 @@ import {
   Radio,
   Pagination,
   Progress,
-  Modal
+  Modal,
+  Spin
 } from 'antd';
 import { message } from 'antd';
 import type { UploadProps } from 'antd';
@@ -66,6 +67,9 @@ const labelData = () => {
 
   const [addLabelForm] = Form.useForm();
   const [messageApi, contextHolder] = message.useMessage();
+
+  // @ loading to stop user action.
+  const [isLoading, setIsLoading] = useState(false);
 
   // @ Regular Expression Loading Progress
   const [actionLoading_RE, setActionLoading_RE] = useState(false);
@@ -149,12 +153,12 @@ const labelData = () => {
         setCurrentFileContentJson(response.data[0]); // = 目前檔案內容
         setCurrentFileContentPage(1); 
 
-        
-        
       })
       .catch((error) => {
         handleErrorResponse(error);
-      }).finally(() => {});
+      }).finally(() => {
+        setIsLoading(false); // 加載完成
+      });
   }
 
   const fetchProcessedFileContent = async (fileName: string) => {
@@ -207,7 +211,9 @@ const labelData = () => {
       })
       .catch((error) => {
         handleErrorResponse(error);
-      }).finally(() => {});
+      }).finally(() => {
+        setIsLoading(false);
+      });
   }
 
   // ----- API -> 刪除欄位
@@ -296,6 +302,7 @@ const labelData = () => {
 
   // ----- 選擇檔案
   const chooseTheFile = (selectedValue: string) => {
+    setIsLoading(true);
     setCurrentFileContentPage(1);
     fetchFileContent(selectedValue);
     fetchProcessedFileContent(selectedValue);
@@ -477,12 +484,15 @@ const labelData = () => {
 
   }
 
-  const addLabel = (text: string) => {
+  const addItem = (text: string) => {
+
+    setIsLoading(true);
 
     // - 檢查是否有重複的
     const isExisting = labelFields.some(labelField => labelField.name === text);
     if(isExisting) {
       messageApi.error(`${text} already exists in the list.`);
+      setIsLoading(false);
       return;
     }
 
@@ -518,7 +528,7 @@ const labelData = () => {
             >
               <div className='grid grid-cols-12 gap-4'>
                 <TextArea value={labelField.value} className="col-span-11" />
-                <button onClick={() => handleDelete(index, labelField.name)}><DeleteOutlined /></button> 
+                <button onClick={() => handleDelete(index, labelField.name)} type="button"><DeleteOutlined /></button> 
               </div>
             </Form.Item>
           </div>
@@ -559,6 +569,8 @@ const labelData = () => {
   }, []);
   
   return (
+    <Spin spinning={isLoading} tip="Loading...">
+
     <BasePageContainer breadcrumb={breadcrumb} transparent={true} 
       extra={ <>
         <Button onClick={chooseIsVisible(0)} className={isVisible[0] ? 'ant-btn-beChosen' : 'ant-btn-notChosen'}>Uploads</Button>
@@ -610,7 +622,9 @@ const labelData = () => {
                       options={fileNameList}
                       onChange={chooseTheFile}
                       value={currentFileName}
-                      showSearch  />
+                      showSearch
+                      loading={isLoading}
+                      />
                     <Button className="w-full ant-btn-check"  icon={<DownloadOutlined />} onClick={downloadProcessedFile}> 
                       <span className="btn-text">Down</span> 
                     </Button>
@@ -680,8 +694,8 @@ const labelData = () => {
                         {showLabelList()}
 
                         <div className='grid grid-cols-2 gap-4'>
-                          <Input addonBefore="name" value={newLabel} onChange={handleNewLabelChange}/>
-                          <Button type="dashed" onClick={() => {addLabel(newLabel)}} block disabled={!newLabel}> 
+                          <Input addonBefore="name" value={newLabel} onChange={handleNewLabelChange} />
+                          <Button type="dashed" onClick={() => {addItem(newLabel)}} block disabled={!newLabel} htmlType="submit" > 
                             + Add Item 
                           </Button>
                         </div>
@@ -745,6 +759,7 @@ const labelData = () => {
       {contextHolder}
 
     </BasePageContainer>
+    </Spin>
   );
 };
 
