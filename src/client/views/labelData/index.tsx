@@ -360,7 +360,6 @@ const labelData = () => {
             })
           });
           setProcessContentList(processContentList)
-          
         })
         .catch((error) => {})
         .finally(() => { setIsLoading(false); })
