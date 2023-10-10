@@ -31,6 +31,7 @@ import { handleErrorResponse } from '../../utils';
 import './index.css'
 import { FormItemInputContext } from 'antd/es/form/context';
 import { current } from '@reduxjs/toolkit';
+import Item from 'antd/es/list/Item';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -326,6 +327,10 @@ const labelData = () => {
             }
           });
         });
+
+        setLabelFields(labelFields)
+
+
       })
       .catch((error) => {})
       .finally(() => { setIsLoading(false); })
@@ -345,15 +350,16 @@ const labelData = () => {
         .then((response) => { 
           type responseList = []
           type responseItem = {name: string, gpt_value: string}
-          response.data.map((responseList:responseList) =>{
-            responseList.map((responseItem:responseItem) => {
-              labelFields.forEach(labelField => {
-                if (labelField.name === responseItem.name) {
-                  labelField.gpt_value = responseItem.gpt_value;
+          response.data.map((responseList: responseList, responseListIndex:number) => {
+            responseList.map((responseItem: responseItem, responseItemIndex) => {
+              processContentList[responseListIndex].processed?.forEach((item, index) => {
+                if (item.name === responseItem.name){
+                  item.gpt_value = responseItem.gpt_value;
                 }
-              });
+              })  
             })
-          })
+          });
+          setProcessContentList(processContentList)
           
         })
         .catch((error) => {})
@@ -799,7 +805,7 @@ const labelData = () => {
               extra={<Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(4)}></Button>}>
 
               <Button className="w-full ant-btn-action mb-4" onClick={GPTAction} disabled={!currentFileContentDisplay}>current - GPT retrieve</Button>
-              {/* <Button className="w-full ant-btn-all_gpt" onClick={GPTAction_all} disabled={!currentFileContentDisplay}>all - GPT retrieve</Button> */}
+              <Button className="w-full ant-btn-all_gpt" onClick={GPTAction_all} disabled={!currentFileContentDisplay}>all - GPT retrieve</Button>
 
             </Card>
            </> }
