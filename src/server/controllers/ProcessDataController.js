@@ -358,7 +358,7 @@ exports.gptRetrieve = async (req, res) => {
             const messageList = [
                 { 
                     "role": "system", 
-                    "content": "你現在是資料擷取專家，你需要按照此JSON 格式的 name 擷取填入對應的 value。只需要回傳 JSON 。結構不可以變更，參考: \n" + JSON.stringify(responseData.labelFields) 
+                    "content": "你現在是資料擷取專家，你需要按照此JSON 格式的 name 擷取填入對應的 gpt_value。只需要回傳 JSON 。結構不可以變更，參考: \n" + JSON.stringify(responseData.labelFields) 
                 },
                 {
                     "role": "user",
@@ -380,7 +380,7 @@ exports.gptRetrieve = async (req, res) => {
                 let parsedJson = JSON.parse(response.choices[0].message.content);
                 responseData.labelFields = parsedJson;
             } catch (e) {
-                console.log("The GPT response is not the Json", response.choices[0].message) 
+                console.log("The GPT response is not the Json", response.choices[0].message.content) 
             }
         }
 
@@ -421,7 +421,7 @@ exports.gptRetrieve_all = async (req, res) => {
                 const messageList = [
                     { 
                         "role": "system", 
-                        "content": "你現在是資料擷取專家，你需要按照此JSON 格式的 name 擷取填入對應的 gpt_value。只需要回傳 JSON 。原本的結構不可以變更， \n" + JSON.stringify(contentItemProcessed_temp) 
+                        "content": "你現在是資料擷取專家，你需要按照此JSON 格式的 name 擷取填入對應的 gpt_value。只需要回傳 JSON 。注意！原本的結構不可以變更， \n" + JSON.stringify(contentItemProcessed_temp) 
                     },
                     {
                         "role": "user",
