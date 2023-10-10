@@ -4,6 +4,7 @@ const { OpenAI } = require("openai");
 const fs = require('fs')
 const path = require('path')
 const multer = require('multer');
+const { json, response } = require('express');
 
 function now_formatDate() {
     const date = new Date();
@@ -238,11 +239,11 @@ exports.addNewLabel_all = async (req, res) => {
         const formattedData = contentData.map(item => {
             // 如果 item 中有 processed 屬性，則在 processed 中加入 newLabel
             if(item.processed) {
-                item.processed.push({name: newLabel, value: "", the_surrounding_words: "", regular_expression_match: "", regular_expression_formula: ""});
+                item.processed.push({name: newLabel, value: "", the_surrounding_words: "", regular_expression_match: "", regular_expression_formula: "", gpt_value: ""});
             } else {
                 // 如果 item 中沒有 processed 屬性，則創建一個並加入 newLabel
                 item.processed = [];
-                item.processed.push({name: newLabel, value: "", the_surrounding_words: "", regular_expression_match: "", regular_expression_formula: ""});
+                item.processed.push({name: newLabel, value: "", the_surrounding_words: "", regular_expression_match: "", regular_expression_formula: "", gpt_value: ""});
             }
             return JSON.stringify(item);
         }).join('\n');
@@ -330,39 +331,141 @@ exports.test_GPT = async (req, res) => {
     }
 }
 
-
-
 exports.gptRetrieve = async (req, res) => {
     try {
-
         // - Data Preparation
         const requestData = req.body;
         var responseData = {};
+        responseData.labelFields = requestData.labelFields.map(item => {
+            return {
+                name: item.name,
+                gpt_value: item.gpt_value
+            }
+        })
 
         // - 1. text, 把大量文本拆成 2048 以下的 token 數量，成為 List
         const originalText = req.body.content;
-        var textList = splitText(originalText)
+        var textList = splitText(originalText, input_token = 2048, now_token = JSON.stringify(responseData.labelFields).length);
 
         // - 2. 將 text List 送給 GPT做批量 retrieve
+        const configCrypto = new ConfigCrypto();
+        const OPENAI_API_KEY = configCrypto.config.GPT_KEY; // Get OpenAI API key
+        const openai = new OpenAI({
+            apiKey: OPENAI_API_KEY // This is also the default, can be omitted
+        });
 
+        for (const [index, text] of textList.entries()) {
+            const messageList = [
+                { 
+                    "role": "system", 
+                    "content": "你現在是資料擷取專家，你需要按照此JSON 格式的 name 擷取填入對應的 value。只需要回傳 JSON 。結構不可以變更，參考: \n" + JSON.stringify(responseData.labelFields) 
+                },
+                {
+                    "role": "user",
+                    "content": JSON.stringify(text)
+                }
+            ];
 
-        // - 3. 將檢索成功的 value 套回到 labelFields.
-    
-        
-        res.status(500).send(textList);
+            const response = await openai.chat.completions.create({
+                model: "gpt-3.5-turbo",
+                messages: messageList,
+                temperature: 0.1,
+                max_tokens: 1024,
+                top_p: 1,
+                frequency_penalty: 0,
+                presence_penalty: 0
+            });
+            
+            try {
+                let parsedJson = JSON.parse(response.choices[0].message.content);
+                responseData.labelFields = parsedJson;
+            } catch (e) {
+                console.log("The GPT response is not the Json", response.choices[0].message) 
+            }
+        }
+
+        res.status(200).send(responseData);
     } catch (error) {
         res.setHeader('Content-Type', 'text/plain; charset=utf-8');
         res.status(500).send(`[gptRetrieve] Error : ${error.message || error}`);
     }
-}
+};
 
-function splitText(text, input_token=2048) {
 
-    const maxTokens = input_token; // = 希望不要超過的 token 數量
+exports.gptRetrieve_all = async (req, res) => {
+    try {
+        // - Data Preparation
+        const requestContent = req.body.content;
+        const contentKey = req.body.contentKey;
+        var responseData = [];
+
+        const configCrypto = new ConfigCrypto();
+        const OPENAI_API_KEY = configCrypto.config.GPT_KEY; // Get OpenAI API key
+        const openai = new OpenAI({
+            apiKey: OPENAI_API_KEY // This is also the default, can be omitted
+        });
+
+        for (const contentItem of requestContent) {
+            const originalText = contentItem[contentKey];
+            var textList = splitText(originalText, input_token = 2048, now_token = JSON.stringify(contentItem.processed).length);
+
+            // @ 只需要留 name, gpt_value
+            var contentItemProcessed_temp = contentItem.processed.map(function (item) {
+                return {
+                    name: item.name,
+                    gpt_value: item.gpt_value
+                }
+            })
+
+            for (const [index, text] of textList.entries()) {
+                const messageList = [
+                    { 
+                        "role": "system", 
+                        "content": "你現在是資料擷取專家，你需要按照此JSON 格式的 name 擷取填入對應的 gpt_value。只需要回傳 JSON 。原本的結構不可以變更， \n" + JSON.stringify(contentItemProcessed_temp) 
+                    },
+                    {
+                        "role": "user",
+                        "content": JSON.stringify(text)
+                    }
+                ];
+
+                const response = await openai.chat.completions.create({
+                    model: "gpt-3.5-turbo",
+                    messages: messageList,
+                    temperature: 0.1,
+                    max_tokens: 1024,
+                    top_p: 1,
+                    frequency_penalty: 0,
+                    presence_penalty: 0
+                });
+                
+                try {
+                    let parsedJson = JSON.parse(response.choices[0].message.content);
+                    contentItemProcessed_temp = parsedJson;
+                } catch (e) {
+                    console.log("The GPT response is not the Json", response.choices[0].message) 
+                }
+            }
+            responseData.push(contentItemProcessed_temp);
+        }
+
+        res.status(200).send(responseData);
+    } catch (error) {
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.status(500).send(`[gptRetrieve] Error : ${error.message || error}`);
+    }
+};
+
+
+
+function splitText(text, input_token=2048, now_token = 0) {
+
+    const maxTokens = input_token - now_token; // = 希望不要超過的 token 數量
     const punctuation = ['。', '！', '？', '.', '!', '?', '，', '、']; // = 斷點的標點符號
 
     var textList_result = [];
     var startIdx = 0, endIdx = maxTokens;
+
 
     // - 走完 全部的text
     while ( startIdx < text.length ){

@@ -37,7 +37,7 @@ const { Option } = Select;
 
 // - 定義型態
 type FileNameItem = { value: string; label: string; };
-type FieldsNameItem = { name: string; value: string; the_surrounding_words: string; regular_expression_match: string, regular_expression_formula: string };
+type FieldsNameItem = { name: string; value: string; the_surrounding_words: string; regular_expression_match: string, regular_expression_formula: string, gpt_value: string };
 type ProcessedContent = { fileName:string, content: string; processed?: FieldsNameItem[]; };
 type ModalFormatter = {
   isOpen: boolean;
@@ -147,7 +147,8 @@ const labelData = () => {
         setFileContentList(response.data);
         // setProcessContentList(response.data)
 
-        setFileContentFields(Object.keys(response.data[0]));
+        const keysWithoutProcessed = Object.keys(response.data[0]).filter(key => key !== 'processed');
+        setFileContentFields(keysWithoutProcessed);
         setFileContentKey(fileContentFields[0])
 
         setCurrentFileContentJson(response.data[0]); // = 目前檔案內容
@@ -219,6 +220,7 @@ const labelData = () => {
   // ----- API -> 刪除欄位
   const removeLabel_all = async (labelToRemove: string) => {
     
+    setIsLoading(true);
     const request = {
       fileName: currentFileName,
       content:processContentList,
@@ -231,7 +233,9 @@ const labelData = () => {
        })
       .catch((error) => {
         handleErrorResponse(error);
-      }).finally(() => {});
+      }).finally(() => {
+        setIsLoading(false);
+      });
   }
 
   // ----- API -> 下載檔案
@@ -282,7 +286,9 @@ const labelData = () => {
   // ----- API -> 刪除檔案
   const deleteFile = async () => {
     
+    setIsLoading(true);
     const request = { fileName: currentFileName, }
+
 
     defaultHttp.post(apiRoutes.deleteFile, request)
       .then((response) => { 
@@ -291,12 +297,68 @@ const labelData = () => {
         setCurrentFileContentDisplay("");
         setFileContentFields([]);
         messageApi.success("刪除成功");
-
+        
       })
       .catch((error) => {
         handleErrorResponse(error);
       }).finally(() => {});
+
   }
+
+
+  // ----- API -> GPT 搜索
+  const GPTAction = async() => {
+
+    setIsLoading(true);
+
+    const request = {
+      labelFields: labelFields,
+      content: currentFileContentDisplay 
+    }
+
+    defaultHttp.post(apiRoutes.gptRetrieve, request)
+      .then((response) => {
+        type respGPTValue = { name: string, gpt_value: string}
+        response.data.labelFields.forEach((responseItem: respGPTValue) => {
+          labelFields.forEach(labelField => {
+            if (labelField.name === responseItem.name) {
+              labelField.gpt_value = responseItem.gpt_value;
+            }
+          });
+        });
+      })
+      .catch((error) => {})
+      .finally(() => { setIsLoading(false); })
+  }
+
+    // ----- API -> GPT 全部 搜索
+    const GPTAction_all = async() => {
+
+      setIsLoading(true);
+  
+      const request = {
+        content:  processContentList,
+        contentKey: fileContentKey
+      }
+
+      defaultHttp.post(apiRoutes.gptRetrieve_all, request)
+        .then((response) => { 
+          type responseList = []
+          type responseItem = {name: string, gpt_value: string}
+          response.data.map((responseList:responseList) =>{
+            responseList.map((responseItem:responseItem) => {
+              labelFields.forEach(labelField => {
+                if (labelField.name === responseItem.name) {
+                  labelField.gpt_value = responseItem.gpt_value;
+                }
+              });
+            })
+          })
+          
+        })
+        .catch((error) => {})
+        .finally(() => { setIsLoading(false); })
+    }
   
   // -------------------------------------------------- General Functions.
 
@@ -406,7 +468,8 @@ const labelData = () => {
       value: "",
       the_surrounding_words: "",
       regular_expression_match: "",
-      regular_expression_formula: ""
+      regular_expression_formula: "",
+      gpt_value: ""
     }));
 
     let newClearedLabelFields: FieldsNameItem[] = [...clearedLabelFields]; 
@@ -419,23 +482,16 @@ const labelData = () => {
         
         // 如果 clearedLabelFields 中沒有該項目，則新增
         if (!exists) {
-            newClearedLabelFields.push({
-                name: item.name,
-                value: item.value,
-                the_surrounding_words: item.the_surrounding_words,
-                regular_expression_match: item.regular_expression_match,
-                regular_expression_formula: item.regular_expression_formula,
-            });
-        }
+          newClearedLabelFields.push({
+              ...item
+          });
+       }
         // 如果 clearedLabelFields 中已有該項目，則覆蓋
         else {
-            const indexToUpdate = newClearedLabelFields.findIndex(field => field.name === item.name);
-            if (indexToUpdate !== -1) {
-                newClearedLabelFields[indexToUpdate].value = item.value;
-                newClearedLabelFields[indexToUpdate].the_surrounding_words = item.the_surrounding_words;
-                newClearedLabelFields[indexToUpdate].regular_expression_match = item.regular_expression_match;
-                newClearedLabelFields[indexToUpdate].regular_expression_formula = item.regular_expression_formula;
-            }
+          const indexToUpdate = newClearedLabelFields.findIndex(field => field.name === item.name);
+          if (indexToUpdate !== -1) {
+            Object.assign(newClearedLabelFields[indexToUpdate], item);
+          }
         }
       }
     } 
@@ -497,7 +553,12 @@ const labelData = () => {
     }
 
     // - 確認可儲存
-    const newLabel: FieldsNameItem = { name:text, value:"", the_surrounding_words: "", regular_expression_match: "", regular_expression_formula: ""};
+    const newLabel: FieldsNameItem = { 
+      name:text, 
+      value:"", 
+      the_surrounding_words: "", regular_expression_match: "", regular_expression_formula: "",
+      gpt_value: ""
+    };
     setLabelFields(prevLabelFields => [...prevLabelFields, newLabel]);
     setNewLabel("");
     addNewLabel_all(text);
@@ -737,7 +798,8 @@ const labelData = () => {
             <Card bordered={false} title="Regular Expression" className="w-full cursor-default grid gap-4 mb-4"
               extra={<Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(4)}></Button>}>
 
-              <Button className="w-full ant-btn-action" >GPT</Button>
+              <Button className="w-full ant-btn-action mb-4" onClick={GPTAction} disabled={!currentFileContentDisplay}>current - GPT retrieve</Button>
+              {/* <Button className="w-full ant-btn-all_gpt" onClick={GPTAction_all} disabled={!currentFileContentDisplay}>all - GPT retrieve</Button> */}
 
             </Card>
            </> }

@@ -10,5 +10,6 @@ export const apiRoutes = {
   deleteFile: `${API_URL}/processData/deleteFile`,
   addNewLabel_all: `${API_URL}/processData/addNewLabel_all`,
   removeLabel_all: `${API_URL}/processData/removeLabel_all`,
-  gptRetrieve: `${API_URL}/processData/gptRetrieve`
+  gptRetrieve: `${API_URL}/processData/gptRetrieve`,
+  gptRetrieve_all: `${API_URL}/processData/gptRetrieve_all`
 };

@@ -44,8 +44,6 @@
     border: 1px dashed ;
 }
 
-
-
 .ant-btn-action {
     color: #303a84;
     border-color: #303a84;
@@ -54,4 +52,14 @@
 .ant-btn-action:hover {
     color: #2026546f !important;
     border-color: #2026546f !important;
+}
+
+.ant-btn-all_gpt {
+    color: #c71919;
+    border-color: #c71919;
+}
+
+.ant-btn-all_gpt:hover {
+    color: #c7191942 !important;
+    border-color: #c7191948 !important;
 }
