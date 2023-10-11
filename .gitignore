@@ -1,6 +1,4 @@
 node_modules/
 /.vscode/
 
-src/server/uploads/processed/
-
 /src/server/config/development.js

@@ -16,7 +16,7 @@ app.use(express.json()); // Parse the JSON request body
 
 // -------------------- Server Settings
 const port = configCrypto.config.PORT || 8280;
-let hostname = 'localhost';
+let hostname = configCrypto.config.HOSTNAME || 'localhost';
 app.get('/api/config', (req, res) => {
   res.json({
     HOSTNAME: hostname,

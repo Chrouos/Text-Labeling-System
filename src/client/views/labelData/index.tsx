@@ -302,7 +302,9 @@ const labelData = () => {
       })
       .catch((error) => {
         handleErrorResponse(error);
-      }).finally(() => {});
+      }).finally(() => {
+        setIsLoading(false);
+      });
 
   }
 
