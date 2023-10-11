@@ -20,7 +20,7 @@ import {
 import { message } from 'antd';
 import type { UploadProps } from 'antd';
 import type { UploadFile } from 'antd/es/upload/interface';
-import { UploadOutlined, CheckOutlined, DeleteOutlined, CloseOutlined, DownloadOutlined, DownOutlined, UpOutlined} from '@ant-design/icons';
+import { UploadOutlined, CheckOutlined, DeleteOutlined, CloseOutlined, DownloadOutlined, DownOutlined, UpOutlined, ClearOutlined} from '@ant-design/icons';
 import Highlighter from "react-highlight-words";
 
 import { webRoutes } from '../../routes/web';
@@ -596,6 +596,12 @@ const labelData = () => {
       setLabelFields(updatedLabelFields); 
       removeLabel_all(labelName);
     };
+
+    const handleClean = (indexToClean: number, labelName:string) => {
+      const updatedLabelFields = [...labelFields];
+      updatedLabelFields[indexToClean].value = '';
+      setLabelFields(updatedLabelFields);
+    }
     
     return (
       <>
@@ -612,8 +618,9 @@ const labelData = () => {
               } 
             >
               <div className='grid grid-cols-12 gap-4'>
-                <TextArea value={labelField.value} className="col-span-11" />
-                <button onClick={() => handleDelete(index, labelField.name)} type="button"><DeleteOutlined /></button> 
+                <TextArea value={labelField.value} className="col-span-10" />
+                <button onClick={() => handleDelete(index, labelField.name)} type="button" className='ant-btn-delete'><DeleteOutlined /></button> 
+                <button onClick={() => handleClean(index, labelField.name)} type="button" className='ant-btn-action'><ClearOutlined /></button> 
               </div>
             </Form.Item>
           </div>
@@ -670,7 +677,7 @@ const labelData = () => {
         
       <Row gutter={24}>
         
-        <Col xl={14} lg={14} md={14} sm={24} xs={24} style={{ marginBottom: 24, height: '80vh', overflowY: 'auto'}} >
+        <Col xl={14} lg={14} md={14} sm={24} xs={24} style={{ marginBottom: 24}} >
           <Card bordered={false} className="w-full h-full cursor-default">
           <div className='grid gap-2 mb-4 grid-cols-5'>
             <Pagination 
@@ -688,11 +695,11 @@ const labelData = () => {
             <TextArea
               className='h-full'
               showCount
-              style={{ height: 600, marginBottom: 24 }}
+              autoSize={{minRows: 25, maxRows: 25}}
+              style={{ height: '80vh', marginBottom: 24 }}
               placeholder="欲標記內容"
               value={currentFileContentDisplay}
               onSelect={handleTextSelection} />
-
             
           </Card>
         </Col >

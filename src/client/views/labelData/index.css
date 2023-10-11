@@ -63,3 +63,13 @@
     color: #c7191942 !important;
     border-color: #c7191948 !important;
 }
+
+.ant-btn-delete {
+    color: #c71919;
+    border-color: #c71919;
+}
+
+.ant-btn-delete:hover {
+    color: #c7191942 !important;
+    border-color: #c7191948 !important;
+}
