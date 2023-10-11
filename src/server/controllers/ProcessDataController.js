@@ -343,9 +343,12 @@ exports.gptRetrieve = async (req, res) => {
             }
         })
 
+        // - GPT Question
+        const system_content = "你現在是資料擷取專家，你需要按照此JSON 格式的 name 擷取填入對應的 gpt_value。只需要回傳 JSON 。注意！原本的結構不可以變更， \n \n"     
+
         // - 1. text, 把大量文本拆成 2048 以下的 token 數量，成為 List
         const originalText = req.body.content;
-        var textList = splitText(originalText, input_token = 2048, now_token = JSON.stringify(responseData.labelFields).length);
+        var textList = splitText(originalText, input_token = 2048, now_token = (JSON.stringify(responseData.labelFields).length + system_content.length));
 
         // - 2. 將 text List 送給 GPT做批量 retrieve
         const configCrypto = new ConfigCrypto();
@@ -358,7 +361,7 @@ exports.gptRetrieve = async (req, res) => {
             const messageList = [
                 { 
                     "role": "system", 
-                    "content": "你現在是資料擷取專家，你需要按照此JSON 格式的 name 擷取填入對應的 gpt_value。只需要回傳 JSON 。結構不可以變更，參考: \n" + JSON.stringify(responseData.labelFields) 
+                    "content": system_content + JSON.stringify(responseData.labelFields) 
                 },
                 {
                     "role": "user",
@@ -405,9 +408,12 @@ exports.gptRetrieve_all = async (req, res) => {
             apiKey: OPENAI_API_KEY // This is also the default, can be omitted
         });
 
+        // - GPT Question 
+        const system_content = "你現在是資料擷取專家，你需要按照此JSON 格式的 name 擷取填入對應的 gpt_value。只需要回傳 JSON 。結構不可以變更，參考: \n"     
+
         for (const contentItem of requestContent) {
             const originalText = contentItem[contentKey];
-            var textList = splitText(originalText, input_token = 2048, now_token = JSON.stringify(contentItem.processed).length);
+            var textList = splitText(originalText, input_token = 2048, now_token = (JSON.stringify(responseData.labelFields).length + system_content.length));
 
             // @ 只需要留 name, gpt_value
             var contentItemProcessed_temp = contentItem.processed.map(function (item) {
@@ -421,7 +427,7 @@ exports.gptRetrieve_all = async (req, res) => {
                 const messageList = [
                     { 
                         "role": "system", 
-                        "content": "你現在是資料擷取專家，你需要按照此JSON 格式的 name 擷取填入對應的 gpt_value。只需要回傳 JSON 。注意！原本的結構不可以變更， \n" + JSON.stringify(contentItemProcessed_temp) 
+                        "content": system_content + JSON.stringify(contentItemProcessed_temp) 
                     },
                     {
                         "role": "user",
