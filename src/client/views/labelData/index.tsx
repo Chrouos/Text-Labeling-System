@@ -656,17 +656,21 @@ const labelData = () => {
   return (
     <Spin spinning={isLoading} tip="Loading...">
 
-    <BasePageContainer breadcrumb={breadcrumb} transparent={true} 
+    {/* <BasePageContainer breadcrumb={breadcrumb} transparent={true} 
       extra={ <>
+        
+      </> } > */}
+      <div className='mb-4'>
         <Button onClick={chooseIsVisible(0)} className={isVisible[0] ? 'ant-btn-beChosen' : 'ant-btn-notChosen'}>Uploads</Button>
         <Button onClick={chooseIsVisible(1)} className={isVisible[1] ? 'ant-btn-beChosen' : 'ant-btn-notChosen'}>Fields</Button>
         <Button onClick={chooseIsVisible(2)} className={isVisible[2] ? 'ant-btn-beChosen' : 'ant-btn-notChosen'}>Add Label</Button>
         <Button onClick={chooseIsVisible(3)} className={isVisible[3] ? 'ant-btn-beChosen' : 'ant-btn-notChosen'}>Regular Expression</Button>
         <Button onClick={chooseIsVisible(4)} className={isVisible[4] ? 'ant-btn-beChosen' : 'ant-btn-notChosen'}>GPT</Button>
-      </> } >
+      </div>
+        
       <Row gutter={24}>
         
-        <Col xl={14} lg={14} md={14} sm={24} xs={24} style={{ marginBottom: 24 }} >
+        <Col xl={14} lg={14} md={14} sm={24} xs={24} style={{ marginBottom: 24, height: '80vh', overflowY: 'auto'}} >
           <Card bordered={false} className="w-full h-full cursor-default">
           <div className='grid gap-2 mb-4 grid-cols-5'>
             <Pagination 
@@ -693,7 +697,7 @@ const labelData = () => {
           </Card>
         </Col >
 
-        <Col xl={10} lg={10} md={10} sm={24} xs={24} style={{ marginBottom: 24 }}>
+        <Col xl={10} lg={10} md={10} sm={24} xs={24} style={{ marginBottom: 24, height: '80vh', overflowY: 'auto' }}>
 
           {/* 選擇檔案 + 上傳 */}
           {isVisible[0] && <>
@@ -844,7 +848,7 @@ const labelData = () => {
 
       {contextHolder}
 
-    </BasePageContainer>
+    {/* </BasePageContainer> */}
     </Spin>
   );
 };
