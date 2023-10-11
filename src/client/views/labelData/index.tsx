@@ -185,14 +185,17 @@ const labelData = () => {
       }).finally(() => { setIsLoading(false); });
   }
 
+
+
   // ----- API -> 上傳擷取檔案
   const uploadProcessedFile = async () => {
 
     setIsLoading(true);
+    const updatedContentList = updateContentListByLabelFields()
 
     const request = {
       fileName: currentFileName,
-      content: processContentList
+      content: updatedContentList
     }
 
     defaultHttp.post(apiRoutes.uploadProcessedFile, request)
@@ -260,8 +263,6 @@ const labelData = () => {
 
     defaultHttp.post(apiRoutes.downloadProcessedFile, request)
       .then((response) => {
-
-          console.log(response)
 
           // - 假設 response.data 為 binary
           const blob = new Blob([response.data], { type: 'application/octet-stream' }); // 請根據你的檔案類型調整 MIME 類型
@@ -342,13 +343,7 @@ const labelData = () => {
           });
         });
 
-        const updatedContentList: ProcessedContent[] = [...processContentList];
-        if (currentFileContentPage >= 0 && currentFileContentPage < updatedContentList.length) {
-          const currentContent = updatedContentList[currentFileContentPage - 1];
-          if (currentContent) {
-              currentContent.processed = labelFields;
-          }
-        }
+        const updatedContentList: ProcessedContent[] = updateContentListByLabelFields();
         setProcessContentList(updatedContentList);
 
       })
@@ -386,6 +381,18 @@ const labelData = () => {
     }
   
   // -------------------------------------------------- General Functions.
+
+  const updateContentListByLabelFields = () => {
+    const updatedContentList: ProcessedContent[] = [...processContentList];
+    if (currentFileContentPage >= 0 && currentFileContentPage < updatedContentList.length) {
+      const currentContent = updatedContentList[currentFileContentPage - 1];
+      if (currentContent) {
+          currentContent.processed = labelFields;
+      }
+    }
+    setProcessContentList(updatedContentList);
+    return updatedContentList
+  }
 
   // ----- 選擇檔案
   const chooseTheFile = (selectedValue: string) => {
@@ -521,6 +528,7 @@ const labelData = () => {
     } 
     
     setLabelFields(newClearedLabelFields);
+    updateContentListByLabelFields();
   }
 
   const reAction  = () => {
@@ -598,10 +606,23 @@ const labelData = () => {
     };
 
     const handleClean = (indexToClean: number, labelName:string) => {
+      setIsLoading(true)
       const updatedLabelFields = [...labelFields];
       updatedLabelFields[indexToClean].value = '';
       setLabelFields(updatedLabelFields);
+      setIsLoading(false)
     }
+
+    const handleUpdate = (indexToUpdate: number, labelName:string, newValue: string) => {
+      const updatedLabelFields = [...labelFields];
+      const labelToUpdate = updatedLabelFields[indexToUpdate];
+      
+      if (labelToUpdate.name === labelName) {
+        labelToUpdate.value = newValue;
+      }
+    
+      setLabelFields(updatedLabelFields);
+    };
     
     return (
       <>
@@ -618,7 +639,11 @@ const labelData = () => {
               } 
             >
               <div className='grid grid-cols-12 gap-4'>
-                <TextArea value={labelField.value} className="col-span-10" />
+                <TextArea 
+                  value={labelField.value} 
+                  onChange={(e) => handleUpdate(index, labelField.name, e.target.value)} 
+                  className="col-span-10" 
+                />                
                 <button onClick={() => handleDelete(index, labelField.name)} type="button" className='ant-btn-delete'><DeleteOutlined /></button> 
                 <button onClick={() => handleClean(index, labelField.name)} type="button" className='ant-btn-action'><ClearOutlined /></button> 
               </div>
@@ -663,10 +688,6 @@ const labelData = () => {
   return (
     <Spin spinning={isLoading} tip="Loading...">
 
-    {/* <BasePageContainer breadcrumb={breadcrumb} transparent={true} 
-      extra={ <>
-        
-      </> } > */}
       <div className='mb-4'>
         <Button onClick={chooseIsVisible(0)} className={isVisible[0] ? 'ant-btn-beChosen' : 'ant-btn-notChosen'}>Uploads</Button>
         <Button onClick={chooseIsVisible(1)} className={isVisible[1] ? 'ant-btn-beChosen' : 'ant-btn-notChosen'}>Fields</Button>
@@ -804,7 +825,6 @@ const labelData = () => {
                       <Typography>
                         <pre>{JSON.stringify(labelFields, null, 2)}</pre>
                       </Typography>
-
                     )}
                   </Form.Item>
 
@@ -855,7 +875,6 @@ const labelData = () => {
 
       {contextHolder}
 
-    {/* </BasePageContainer> */}
     </Spin>
   );
 };
