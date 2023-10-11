@@ -138,6 +138,8 @@ const labelData = () => {
   
   // ----- API -> 抓取指定 fileName 的內容 -> Json
   const fetchFileContent = async (fileName: string) => {
+
+    setIsLoading(true);
     
     const request = {
       fileName: fileName as string,
@@ -164,6 +166,8 @@ const labelData = () => {
   }
 
   const fetchProcessedFileContent = async (fileName: string) => {
+
+    setIsLoading(true); 
     
     const request = {
       fileName: fileName as string,
@@ -178,12 +182,14 @@ const labelData = () => {
       })
       .catch((error) => {
         handleErrorResponse(error);
-      }).finally(() => {});
+      }).finally(() => { setIsLoading(false); });
   }
 
   // ----- API -> 上傳擷取檔案
   const uploadProcessedFile = async () => {
-    
+
+    setIsLoading(true);
+
     const request = {
       fileName: currentFileName,
       content: processContentList
@@ -195,11 +201,15 @@ const labelData = () => {
        })
       .catch((error) => {
         handleErrorResponse(error);
-      }).finally(() => {});
+      }).finally(() => {
+        setIsLoading(false);
+      });
   }
 
   // ----- API -> 增加欄位
   const addNewLabel_all = async (newLabel: string) => {
+
+    setIsLoading(true);
     
     const request = {
       fileName: currentFileName,
@@ -241,6 +251,8 @@ const labelData = () => {
 
   // ----- API -> 下載檔案
   const downloadProcessedFile = async () => {
+
+    setIsLoading(true);
     
     const request = {
       fileName: currentFileName,
@@ -280,7 +292,7 @@ const labelData = () => {
         })
       .catch((error) => {
         handleErrorResponse(error);
-      }).finally(() => {});
+      }).finally(() => { setIsLoading(false); });
   }
 
 
@@ -289,7 +301,6 @@ const labelData = () => {
     
     setIsLoading(true);
     const request = { fileName: currentFileName, }
-
 
     defaultHttp.post(apiRoutes.deleteFile, request)
       .then((response) => { 
@@ -371,7 +382,6 @@ const labelData = () => {
 
   // ----- 選擇檔案
   const chooseTheFile = (selectedValue: string) => {
-    setIsLoading(true);
     setCurrentFileContentPage(1);
     fetchFileContent(selectedValue);
     fetchProcessedFileContent(selectedValue);
