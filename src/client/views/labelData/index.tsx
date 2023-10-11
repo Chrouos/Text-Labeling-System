@@ -332,6 +332,7 @@ const labelData = () => {
 
     defaultHttp.post(apiRoutes.gptRetrieve, request)
       .then((response) => {
+
         type respGPTValue = { name: string, gpt_value: string}
         response.data.labelFields.forEach((responseItem: respGPTValue) => {
           labelFields.forEach(labelField => {
@@ -341,8 +342,14 @@ const labelData = () => {
           });
         });
 
-        setLabelFields(labelFields)
-
+        const updatedContentList: ProcessedContent[] = [...processContentList];
+        if (currentFileContentPage >= 0 && currentFileContentPage < updatedContentList.length) {
+          const currentContent = updatedContentList[currentFileContentPage - 1];
+          if (currentContent) {
+              currentContent.processed = labelFields;
+          }
+        }
+        setProcessContentList(updatedContentList);
 
       })
       .catch((error) => {})
@@ -812,7 +819,7 @@ const labelData = () => {
 
            
           { isVisible[4] && <>
-            <Card bordered={false} title="Regular Expression" className="w-full cursor-default grid gap-4 mb-4"
+            <Card bordered={false} title="GPT - Retrieve" className="w-full cursor-default grid gap-4 mb-4"
               extra={<Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(4)}></Button>}>
 
               <Button className="w-full ant-btn-action mb-4" onClick={GPTAction} disabled={!currentFileContentDisplay}>current - GPT retrieve</Button>
