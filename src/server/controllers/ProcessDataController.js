@@ -503,3 +503,19 @@ function splitText(text, input_token=2048, now_token = 0) {
 
     return textList_result;
 }
+
+
+
+exports.formatterProcessedContent = async (req, res) => {
+    try {
+        // - Data Preparation
+        const requestContent = req.body;
+        var responseData = [];
+
+
+        res.status(200).send(responseData);
+    } catch (error) {
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.status(500).send(`[gptRetrieve] Error : ${error.message || error}`);
+    }
+};

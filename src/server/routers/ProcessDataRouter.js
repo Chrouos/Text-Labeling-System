@@ -22,6 +22,8 @@ app.post('/processData/removeLabel_all', processDataController.removeLabel_all);
 app.post('/processData/gptRetrieve', processDataController.gptRetrieve);
 app.post('/processData/gptRetrieve_all', processDataController.gptRetrieve_all);
 
+// @ FOR TRANSFORM
+app.post('/processData/formatterProcessedContent', processDataController.formatterProcessedContent);
 
 
 

@@ -15,6 +15,9 @@ const fallbackElement = <ProgressBar />;
 const LabelData = loadable(() => import('../views/labelData'), {
   fallback: fallbackElement,
 });
+const CompareData = loadable(() => import('../views/compareData'), {
+  fallback: fallbackElement,
+});
 
 export const browserRouter = createBrowserRouter([
 
@@ -34,6 +37,11 @@ export const browserRouter = createBrowserRouter([
         path: webRoutes.labelData,
         element: <LabelData />,
       },
+      {
+        path: webRoutes.compareData,
+        element: <CompareData />,
+      },
+      
       
     ],
   },

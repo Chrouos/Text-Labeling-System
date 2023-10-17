@@ -1,0 +1,12 @@
+.ant-btn-beChosen {
+    color: #000000;
+    border-color: #287a0f87;
+    background-color: #34af0f58;
+}
+
+.ant-btn-notChosen {
+    color: #000000;
+    border-color: transparent;
+    background-color: transparent;
+    border: 1px dashed ;
+}

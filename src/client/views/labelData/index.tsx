@@ -15,7 +15,8 @@ import {
   Pagination,
   Progress,
   Modal,
-  Spin
+  Spin,
+  Checkbox
 } from 'antd';
 import { message } from 'antd';
 import type { UploadProps } from 'antd';
@@ -32,6 +33,7 @@ import './index.css'
 import { FormItemInputContext } from 'antd/es/form/context';
 import { current } from '@reduxjs/toolkit';
 import Item from 'antd/es/list/Item';
+import type { CheckboxChangeEvent } from 'antd/es/checkbox';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -623,17 +625,27 @@ const labelData = () => {
     
       setLabelFields(updatedLabelFields);
     };
+
+    const handleHideLabel = (indexToHide: number, labelName:string, e: CheckboxChangeEvent) => {
+      console.log(indexToHide, labelName, e.target.checked)
+    }
     
+    var isLabelFieldsVisual = new Array(labelFields.length).fill(true);
+
     return (
       <>
         {labelFields.map((labelField: FieldsNameItem, index: number) => (
-          <div key={index} onClick={() => {
-            if(labelField.name == currentSelectedNewLabel) setCurrentSelectedNewLabel("")
-            else setCurrentSelectedNewLabel(labelField.name) }} >
+          
+          <div key={index} >
 
             <Form.Item 
               label={
-                <span style={{  color: labelField.name === currentSelectedNewLabel ? 'red' : 'black'  }}>
+                <span 
+                  style={{  color: labelField.name === currentSelectedNewLabel ? 'red' : 'black'  }}
+                  onClick={() => {
+                    if(labelField.name == currentSelectedNewLabel) setCurrentSelectedNewLabel("")
+                    else setCurrentSelectedNewLabel(labelField.name) 
+                  }}  >
                   {labelField.name}
                 </span>
               } 
@@ -645,6 +657,7 @@ const labelData = () => {
                   className="col-span-10" 
                 />                
                 <button onClick={() => handleDelete(index, labelField.name)} type="button" className='ant-btn-delete'><DeleteOutlined /></button> 
+                {/* <Checkbox onChange={(e) => handleHideLabel(index, labelField.name, e)}></Checkbox> */}
                 <button onClick={() => handleClean(index, labelField.name)} type="button" className='ant-btn-action'><ClearOutlined /></button> 
               </div>
             </Form.Item>
