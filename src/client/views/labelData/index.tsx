@@ -59,8 +59,10 @@ const labelData = () => {
 
   // -------------------------------------------------- Fields Settings
 
-  // - Global Settings
+    // - Global Settings
+    const [extraction_label_form] = Form.useForm();
     const [messageApi, contextHolder] = message.useMessage();
+
     const [isLoading, setIsLoading] = useState(false);
     const [isVisible, setIsVisible] = useState<boolean[]>([false, false, true, false, false]);
     const chooseIsVisible = (index: number) => {
@@ -489,9 +491,32 @@ const labelData = () => {
 
                 {isVisible[2] && <>
                     <Card bordered={false} className="w-full cursor-default grid gap-4 mb-4"  title={"Add Extraction Label"} 
-                        extra={<Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(2)}></Button>}>                
-                      
+                        extra={<Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(2)}></Button>}>  
 
+                        <Form form={extraction_label_form} name="dynamic_label_form" >
+                            <Form.List name="labels">
+                                {(currentProcessedFields) => (
+                                    <div>
+                                        
+                                    </div>
+                                )}
+                            </Form.List>      
+                            <div className='grid grid-cols-2 gap-4'>
+                                <Input addonBefore="name"/>
+                                <Button type="dashed" > 
+                                    + Add Item 
+                                </Button>
+                            </div>
+                            
+                            
+                            {/* <Form.Item noStyle shouldUpdate >
+                                {() => (
+                                <Typography>
+                                    <pre>{JSON.stringify(currentProcessedFields, null, 2)}</pre>
+                                </Typography>
+                                )}
+                            </Form.Item> */}
+                        </Form>
                     </Card>
                 </>}
 
