@@ -44,6 +44,10 @@
     border: 1px dashed ;
 }
 
+.ant-btn-none {
+    display: none !important; 
+}
+
 .ant-btn-action {
     color: #303a84;
     border-color: #303a84;

@@ -209,6 +209,7 @@ exports.downloadProcessedFile = async (req, res) => {
         // 檢查檔案是否存在
         if (fs.existsSync(filePath)) {
             const downloadFileName = `${now_formatDate()}-${req.body.fileName}`;
+
             res.setHeader('Content-Disposition', `attachment; filename=${downloadFileName}`);
             res.download(filePath, downloadFileName);
         } else {

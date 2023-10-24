@@ -47,12 +47,12 @@ const compareData = () => {
     }
 
     // - Processed Content
-    const [processContentList, setProcessContentList] = useState<ProcessedContentType[]>([]); 
+    const [contentList, setContentList] = useState<ProcessedContentType[]>([]); 
     const [processedFields, setProcessedFields] = useState<ProcessedFieldsType[]>([]); 
 
     // - Processed Fields
-    const [processedFieldsLabelList, setProcessedFieldsLabelList] = useState<SelectType[]>([])
-    const [currentFieldsLabel, setCurrentFieldsLabel] = useState<string>("");
+    const [processedFieldsLabelList, setProcessedLabelList] = useState<SelectType[]>([])
+    const [currentSelectedLabel, setCurrentSelectedLabel] = useState<string>("");
     const [formattersMethodList, ] = useState<SelectType[]>([
         { label: "轉換為金錢(Integer)", value: "number" },
         { label: "轉換為民國(YYY-mm)", value: "ROC" },
@@ -83,7 +83,7 @@ const compareData = () => {
     
         defaultHttp.post(apiRoutes.fetchUploadsProcessedFileName, request)
         .then((response) => {
-            setProcessContentList(response.data);
+            setContentList(response.data);
             if (response?.data?.[readTheCurrentPage(currentPage)]?.processed) {
                 const processedData = response.data[readTheCurrentPage(currentPage)].processed;
                 const processedFieldsLabel = processedData.map((item:ProcessedFieldsType) => ({
@@ -92,7 +92,7 @@ const compareData = () => {
                 }));
   
                 setProcessedFields(processedData);
-                setProcessedFieldsLabelList(processedFieldsLabel);
+                setProcessedLabelList(processedFieldsLabel);
             }
         })
         .catch((error) => {
@@ -106,7 +106,7 @@ const compareData = () => {
         setIsLoading(true); 
         const request = {
             fileName: currentFileName as string,
-            preFormatterLabel: currentFieldsLabel as string,
+            preFormatterLabel: currentSelectedLabel as string,
             preFormatterMethod: currentFormatterMethod as string
         }
     
@@ -129,7 +129,7 @@ const compareData = () => {
     
     // ----- 選擇欄位
     const chooseTransformLabel = (selectedValue: string) => {
-        setCurrentFieldsLabel(selectedValue);
+        setCurrentSelectedLabel(selectedValue);
     }
 
     // ----- 選擇轉換格式
@@ -140,7 +140,7 @@ const compareData = () => {
     // ----- 換頁
     const changePage = (page: number) => {
         setCurrentPage(page);
-        setProcessedFields(processContentList[page]?.processed || []);
+        setProcessedFields(contentList[page]?.processed || []);
     }
 
     // ----- Filter -> 選擇檔案 
@@ -176,7 +176,7 @@ const compareData = () => {
                                 filterOption={labelValue_selectedFilterOption}
                                 options={processedFieldsLabelList}
                                 onChange={chooseTransformLabel}
-                                value={currentFieldsLabel}
+                                value={currentSelectedLabel}
                                 loading={isLoading}
                                 showSearch />
 
@@ -195,7 +195,7 @@ const compareData = () => {
                         <div className='w-full grid mt-4'>
                             <Button className='w-full' 
                                     onClick={updateFormatters} 
-                                    disabled={currentFieldsLabel == "" || currentFormatterMethod == ""}> 
+                                    disabled={currentSelectedLabel == "" || currentFormatterMethod == ""}> 
                                 轉換 
                             </Button>
                         </div>
@@ -220,7 +220,7 @@ const compareData = () => {
                             extra={ <Pagination 
                                 simple 
                                 current={currentPage}  
-                                total={processContentList.length} 
+                                total={contentList.length} 
                                 onChange={(page, pageSize) => changePage(page)}  
                                 pageSize={1} /> } >
                         
