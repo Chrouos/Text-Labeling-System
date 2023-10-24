@@ -3,13 +3,16 @@ import { toast } from 'sonner';
 
 import axios from 'axios';
 
-let API_URL = `http://localhost:4567`; 
+let API_URL = `http://localhost:4567`;
 axios.get('/api/config').then(response => {
   const HOSTNAME = response.data.HOSTNAME;
   API_URL = `http://${HOSTNAME}:4567`;
 });
 
-export { API_URL };
+export function getApiUrl() {
+  return API_URL;
+}
+
 
 export enum NotificationType {
   ERROR = 'error',

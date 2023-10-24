@@ -18,10 +18,12 @@ app.use(express.json()); // Parse the JSON request body
 const port = configCrypto.config.PORT || 8280;
 let hostname = configCrypto.config.HOSTNAME || 'localhost';
 app.get('/api/config', (req, res) => {
-  res.json({
+
+  const response = {
     HOSTNAME: hostname,
     PORT: port
-  });
+  }
+  res.json(response);
 });
 
 // -------------------- routers list --------------------

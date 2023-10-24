@@ -1,6 +1,8 @@
-import { API_URL } from '../utils';
+import { getApiUrl } from '../utils';
+const API_URL = getApiUrl();
 
 export const apiRoutes = {
+
   fetchUploadsFileName: `${API_URL}/processData/fetchUploadsFileName`,
   uploadTheFile: `${API_URL}/processData/uploadTheFile`,
   fetchFileContentJson: `${API_URL}/processData/fetchFileContentJson`,
