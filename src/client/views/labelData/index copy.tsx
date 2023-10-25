@@ -212,7 +212,7 @@ const labelData = () => {
   }
 
   // ----- API -> 增加欄位
-  const addNewLabel_all = async (newLabel: string) => {
+  const addExtractionLabel_all = async (newLabel: string) => {
 
     setIsLoading(true);
     
@@ -222,7 +222,7 @@ const labelData = () => {
       newLabel: newLabel
     }
 
-    defaultHttp.post(apiRoutes.addNewLabel_all, request)
+    defaultHttp.post(apiRoutes.addExtractionLabel_all, request)
       .then((response) => { 
         fetchProcessedFileContent(currentFileName);
       })
@@ -595,7 +595,7 @@ const labelData = () => {
     };
     setLabelFields(prevLabelFields => [...prevLabelFields, newLabel]);
     setNewLabel("");
-    addNewLabel_all(text);
+    addExtractionLabel_all(text);
   };
 
   // ----- show return.

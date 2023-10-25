@@ -10,7 +10,7 @@ export const apiRoutes = {
   fetchUploadsProcessedFileName: `${API_URL}/processData/fetchUploadsProcessedFileName`,
   downloadProcessedFile: `${API_URL}/processData/downloadProcessedFile`,
   deleteFile: `${API_URL}/processData/deleteFile`,
-  addNewLabel_all: `${API_URL}/processData/addNewLabel_all`,
+  addExtractionLabel_all: `${API_URL}/processData/addExtractionLabel_all`,
   removeLabel_all: `${API_URL}/processData/removeLabel_all`,
   gptRetrieve: `${API_URL}/processData/gptRetrieve`,
   gptRetrieve_all: `${API_URL}/processData/gptRetrieve_all`,

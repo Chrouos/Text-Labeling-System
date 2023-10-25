@@ -35,6 +35,7 @@ import { current } from '@reduxjs/toolkit';
 import Item from 'antd/es/list/Item';
 import type { CheckboxChangeEvent } from 'antd/es/checkbox';
 import type { CheckboxValueType } from 'antd/es/checkbox/Group';
+import { FieldNamesType } from 'antd/es/cascader';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -64,7 +65,7 @@ const labelData = () => {
     const [messageApi, contextHolder] = message.useMessage();
 
     const [isLoading, setIsLoading] = useState(false);
-    const [isVisible, setIsVisible] = useState<boolean[]>([false, false, true, false, false]);
+    const [isVisible, setIsVisible] = useState<boolean[]>([false, false, true, true, true]);
     const chooseIsVisible = (index: number) => {
         return (event: React.MouseEvent<HTMLElement>) => {
             const newIsVisible = [...isVisible];
@@ -97,16 +98,16 @@ const labelData = () => {
     // - Processed Content
     const [contentList, setContentList] = useState<ProcessedContentType[]>([]); 
     const [fileFieldsList, setFileFieldsList] = useState<SelectType[]>([]);
-    const [currentContentFieldKey, setCurrentContentFieldKey] = useState<string | null>(null);
+    const [currentContentFieldKey, setCurrentContentFieldKey] = useState<string>("");
 
     // - Processed Fields
     const [currentProcessedFields, setCurrentProcessedFields] = useState<ProcessedFieldsType[]>([]); 
     const [currentSelectedLabel, setCurrentSelectedLabel] = useState<string>(""); // = 選擇的新欄位
+    
     const [processLabelCheckedList, setProcessLabelCheckedList] = useState<CheckboxValueType[]>([]);
     const [processLabelOptions, setProcessLabelOptions] = useState<string[]>([]);
+    const [newExtractionLabel, setNewExtractionLabel] = useState<string>("");
 
-    // -
-    const highlightedText = currentFileContentVisual.replace(/範例/g, "<span style='background-color: yellow;'>範例</span>");
 
     // -------------------------------------------------- API Settings
 
@@ -134,7 +135,17 @@ const labelData = () => {
         defaultHttp.post(apiRoutes.fetchUploadsProcessedFileName, request)
         .then((response) => {
 
-            // @ 抓取 processed 內容
+            // @ 擷取所有欄位名稱(除了 processed)
+            const keysWithoutProcessed = Object.keys(response.data[0]).filter(key => key !== 'processed');
+            const formattedKeys = keysWithoutProcessed.map(key => ({
+                value: key,
+                label: key
+            }));
+            setFileFieldsList(formattedKeys)
+            setCurrentContentFieldKey(formattedKeys[0].value)
+            setCurrentFileContentVisual(response.data[0][formattedKeys[0].value])
+
+            // @ 抓取 content, processed 內容
             setContentList(response.data);
             if (response?.data?.[readTheCurrentPage(currentPage)]?.processed) {
                 const processedData = response.data[readTheCurrentPage(currentPage)].processed;
@@ -145,20 +156,14 @@ const labelData = () => {
                     item.name
                 ));
                 setProcessLabelOptions(processedNameList);
-                setProcessLabelCheckedList(processedNameList);
-                console.log(processedNameList)
+
+                // @ 查看內容有重複欄位顯示在 CheckedList.
+                const filteredList = processedNameList.filter((item:string[]) => {
+                    return response.data[0][formattedKeys[0].value].includes(item);
+                });
+                setProcessLabelCheckedList(filteredList);
             }
 
-            // @ 擷取所有欄位名稱(除了 processed)
-            const keysWithoutProcessed = Object.keys(response.data[0]).filter(key => key !== 'processed');
-            const formattedKeys = keysWithoutProcessed.map(key => ({
-                value: key,
-                label: key
-            }));
-            setFileFieldsList(formattedKeys)
-            setCurrentContentFieldKey(formattedKeys[0].value)
-
-            setCurrentFileContentVisual(response.data[0][formattedKeys[0].value])
 
         })
         .catch((error) => {
@@ -177,35 +182,35 @@ const labelData = () => {
         }
 
         defaultHttp.post(apiRoutes.downloadProcessedFile, request)
-            .then((response) => {
+        .then((response) => {
 
-                // - 假設 response.data 為 binary
-                const blob = new Blob([response.data], { type: 'application/octet-stream' }); // 請根據你的檔案類型調整 MIME 類型
-                const url = URL.createObjectURL(blob);
+            // @ 假設 response.data 為 binary
+            const blob = new Blob([response.data], { type: 'application/octet-stream' }); // 請根據你的檔案類型調整 MIME 類型
+            const url = URL.createObjectURL(blob);
 
-                // - 創建一個 <a> 標籤來觸發檔案下載
-                const a = document.createElement('a');
-                a.href = url;
+            // @ 創建一個 <a> 標籤來觸發檔案下載
+            const a = document.createElement('a');
+            a.href = url;
 
-                // - 增加下載時間
-                const contentDisposition = response.headers['content-disposition'];
-                let fileName = currentFileName;
-                if (contentDisposition) {
-                    console.log(contentDisposition)
-                    const match = contentDisposition.match(/filename="?(.*?)"?$/);
-                    if (match && match[1]) {
-                        fileName = match[1];
-                    }
-                    console.log(fileName)
+            // @ 增加下載時間
+            const contentDisposition = response.headers['content-disposition'];
+            let fileName = currentFileName;
+            if (contentDisposition) {
+                console.log(contentDisposition)
+                const match = contentDisposition.match(/filename="?(.*?)"?$/);
+                if (match && match[1]) {
+                    fileName = match[1];
                 }
+                console.log(fileName)
+            }
 
-                a.download = fileName || "";
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
+            a.download = fileName || "";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
 
-                // - 釋放 URL
-                URL.revokeObjectURL(url);
+            // - 釋放 URL
+            URL.revokeObjectURL(url);
         })
         .catch((error) => {
             handleErrorResponse(error);
@@ -238,6 +243,50 @@ const labelData = () => {
     }
 
 
+    // ----- API -> 增加欄位
+    const addExtractionLabel_all = async () => {
+
+        setIsLoading(true);
+
+        const request = {
+            fileName: currentFileName,
+            content:contentList,
+            newLabel: newExtractionLabel
+        }
+
+        defaultHttp.post(apiRoutes.addExtractionLabel_all, request)
+        .then((response) => {  
+            fetchProcessedFileContent(currentFileName || "");
+        })
+        .catch((error) => {
+            handleErrorResponse(error);
+        }).finally(() => {
+            setIsLoading(false);
+        });
+    }
+
+    // ----- API -> 刪除欄位
+    const removeLabel_all = async (labelToRemove: string) => {
+        
+        setIsLoading(true);
+        const request = {
+        fileName: currentFileName,
+        content:contentList,
+        labelToRemove: labelToRemove
+        }
+
+        defaultHttp.post(apiRoutes.removeLabel_all, request)
+        .then((response) => {
+            fetchProcessedFileContent(currentFileName || "");
+        })
+        .catch((error) => {
+            handleErrorResponse(error);
+        }).finally(() => {
+            setIsLoading(false);
+        });
+    }
+
+
     // -------------------------------------------------- Other Setting.
     
     // ----- Props -> 上傳檔案的資料
@@ -267,6 +316,20 @@ const labelData = () => {
         },
     };
 
+    // ----- autoVariable -> 自動生成
+    const createProcessedFields = <T extends Partial<ProcessedFieldsType>>(fields: T): ProcessedFieldsType => {
+        
+        const defaultFields = Object.keys(fields).reduce((acc, key) => {
+            acc[key as keyof ProcessedFieldsType] = "";
+            return acc;
+          }, {} as ProcessedFieldsType);
+
+        return {
+            ...defaultFields,
+            ...fields
+        };
+
+    }
 
     // -------------------------------------------------- Other Functions
 
@@ -278,8 +341,32 @@ const labelData = () => {
     
     // ----- 換頁
     const changePage = (page: number) => {
+        const indexPage = readTheCurrentPage(page);
+
         setCurrentPage(page);
-        setCurrentProcessedFields(contentList[page]?.processed || []);
+        setCurrentProcessedFields(contentList[indexPage]?.processed || []);
+    }
+
+    // ----- 增加處理欄位
+    const addExtractionLabel = () => {
+
+        setIsLoading(true);
+
+        // @ 檢查是否重複
+        const isExisting = currentProcessedFields.some(processedField => processedField.name === newExtractionLabel );
+        if (isExisting) {
+            messageApi.error(`${newExtractionLabel} already exists in the list.`);
+            setIsLoading(false);
+            return;
+        }
+
+        // @ 確認可以儲存
+        const temp_newExtractionLabel = createProcessedFields({name: newExtractionLabel});
+        setCurrentProcessedFields(prevLabelFields => [...prevLabelFields, temp_newExtractionLabel]);
+        setNewExtractionLabel("");
+        addExtractionLabel_all();
+
+        setIsLoading(false);
     }
 
     // ----- Filter -> 選擇檔案 
@@ -335,8 +422,63 @@ const labelData = () => {
             };
             setContentList(updateCurrentProcessedFields);
         }
-
     } 
+
+    // ----- Template -> 編輯欄位
+    const editFieldsLabelTemplate = () => {
+
+        const handleDelete = (indexToDelete: number, labelName:string) => {
+            setIsLoading(true)
+            const updatedProcessedFields = currentProcessedFields.filter((_, index) => index !== indexToDelete);
+            setCurrentProcessedFields(updatedProcessedFields); 
+            removeLabel_all(labelName);
+            setIsLoading(false)
+        };
+
+        const handleClean = (indexToClean: number, labelName:string) => {
+            setIsLoading(true)
+            const updatedProcessedFields = [...currentProcessedFields];
+            updatedProcessedFields[indexToClean].value = '';
+            setCurrentProcessedFields(updatedProcessedFields);
+            setIsLoading(false)
+        }
+        
+        const handleUpdate = (indexToUpdate: number, labelName:string, newValue: string) => {
+            setIsLoading(true)
+            const updatedLabelFields = [...currentProcessedFields];
+            if (updatedLabelFields[indexToUpdate].name == labelName){
+                updatedLabelFields[indexToUpdate].value = newValue;
+            }
+            
+            setCurrentProcessedFields(updatedLabelFields);
+            setIsLoading(false)
+        };
+
+        return ( <>
+        
+            {currentProcessedFields.map((originalField: ProcessedFieldsType, originalIndex: number) => {
+                if (processLabelCheckedList.includes(originalField.name)) {
+                    return (
+                        <div key={originalIndex}>
+                            <Form.Item label={<span>{originalField.name}</span>}>
+                                <div className='grid grid-cols-12 gap-4' style={{alignItems: 'center'}}>
+                                    <TextArea 
+                                        className="col-span-10" 
+                                        value={originalField.value}
+                                        onChange={(e) => handleUpdate(originalIndex, originalField.name, e.target.value)}  />
+
+                                    <Button className='ant-btn-icon'><DeleteOutlined /></Button>
+                                </div>
+                            </Form.Item>
+                        </div>
+                    );
+                }
+            })}
+        
+        </> )
+
+    }
+
     
 
     // ----- 進入網頁執行一次 Init
@@ -353,6 +495,9 @@ const labelData = () => {
         <div className="mb-4 space-x-2">
             <Button onClick={chooseIsVisible(0)} className={isVisible[0] ? 'ant-btn-none' : 'ant-btn-notChosen'}>Actions</Button>
             <Button onClick={chooseIsVisible(1)} className={isVisible[1] ? 'ant-btn-none' : 'ant-btn-notChosen'}>Labels Checked</Button>
+            <Button onClick={chooseIsVisible(2)} className={isVisible[2] ? 'ant-btn-none' : 'ant-btn-notChosen'}>Add Extraction Label</Button>
+            <Button onClick={chooseIsVisible(3)} className={isVisible[3] ? 'ant-btn-none' : 'ant-btn-notChosen'}>Extraction Labels</Button>
+            <Button onClick={chooseIsVisible(4)} className={isVisible[4] ? 'ant-btn-none' : 'ant-btn-notChosen'}>Extraction Labels</Button>
         </div>
 
         <Row gutter={24}>
@@ -398,7 +543,7 @@ const labelData = () => {
                     <TextArea
                         className='h-full'
                         showCount
-                        autoSize={{minRows: 21, maxRows: 21}}
+                        // autoSize={{minRows: 21, maxRows: 21}}
                         style={{ height: '80vh', marginBottom: 24, fontSize: '1.2rem' }}
                         placeholder="欲標記內容"
                         value={currentFileContentVisual}
@@ -407,7 +552,7 @@ const labelData = () => {
                 </Card>
             </Col>
 
-            <Col xl={10} lg={10} md={10} sm={24} xs={24} style={{ marginBottom: 24, height: '80vh', overflowY: 'auto' }}>
+            <Col xl={10} lg={10} md={10} sm={24} xs={24} style={{ marginBottom: 24, maxHeight: '100vh', overflowY: 'auto' }}>
             
                 {isVisible[0] && <>
                     <Card bordered={false} className="w-full cursor-default grid gap-4 mb-4"  title={"Actions"} 
@@ -492,30 +637,47 @@ const labelData = () => {
                 {isVisible[2] && <>
                     <Card bordered={false} className="w-full cursor-default grid gap-4 mb-4"  title={"Add Extraction Label"} 
                         extra={<Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(2)}></Button>}>  
-
-                        <Form form={extraction_label_form} name="dynamic_label_form" >
-                            <Form.List name="labels">
-                                {(currentProcessedFields) => (
-                                    <div>
-                                        
-                                    </div>
-                                )}
-                            </Form.List>      
                             <div className='grid grid-cols-2 gap-4'>
-                                <Input addonBefore="name"/>
-                                <Button type="dashed" > 
+                                <Input value={newExtractionLabel} onChange={(e) => {setNewExtractionLabel(e.target.value)}} addonBefore="new Label"/>
+                                <Button type="dashed" onClick={() => addExtractionLabel()} > 
                                     + Add Item 
                                 </Button>
                             </div>
+                    </Card>
+                </>}
+
+                {isVisible[3] && <>
+                    <Card bordered={false} className="w-full cursor-default grid gap-4 mb-4"  title={"Extraction Labels"} 
+                        extra={<Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(3)}></Button>} 
+                        style={{maxHeight: '60vh', overflowY: 'auto'}}>  
+
+                        <Form form={extraction_label_form} name="dynamic_label_form_edit" >
+                            <Form.List name="labels">
+                                {(currentProcessedFields) => (
+                                    <div style={{ display: 'flex', rowGap: 16, flexDirection: 'column' }}>
+                                        {editFieldsLabelTemplate()}
+                                    </div>
+                                )}
+                            </Form.List>      
+                        </Form>
+                    </Card>
+                </>}
+
+                {isVisible[4] && <>
+                    <Card bordered={false} className="w-full cursor-default grid gap-4 mb-4"  title={"Extraction Labels"} 
+                        extra={<Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(4)}></Button>}
+                        style={{maxHeight: '60vh', overflowY: 'auto'}}>  
+
+                        <Form form={extraction_label_form} name="dynamic_label_form_typography" >
                             
-                            
-                            {/* <Form.Item noStyle shouldUpdate >
+                            <Form.Item noStyle shouldUpdate>
                                 {() => (
                                 <Typography>
-                                    <pre>{JSON.stringify(currentProcessedFields, null, 2)}</pre>
+                                    <pre>{JSON.stringify(currentProcessedFields.filter(field => processLabelCheckedList.includes(field.name)), null, 2)}</pre>
                                 </Typography>
                                 )}
-                            </Form.Item> */}
+                            </Form.Item>
+
                         </Form>
                     </Card>
                 </>}

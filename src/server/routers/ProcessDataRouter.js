@@ -15,7 +15,7 @@ app.post('/processData/uploadProcessedFile', processDataController.uploadProcess
 app.post('/processData/downloadProcessedFile', processDataController.downloadProcessedFile);
 
 // @ FOR LABEL ACTIONs
-app.post('/processData/addNewLabel_all', processDataController.addNewLabel_all);
+app.post('/processData/addExtractionLabel_all', processDataController.addExtractionLabel_all);
 app.post('/processData/removeLabel_all', processDataController.removeLabel_all);
 
 // @ FOR GPT ACTIONs

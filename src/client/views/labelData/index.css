@@ -77,3 +77,9 @@
     color: #c7191942 !important;
     border-color: #c7191948 !important;
 }
+
+.ant-btn-icon {
+    border: transparent;
+    display: flex;
+    justify-content: center;
+}

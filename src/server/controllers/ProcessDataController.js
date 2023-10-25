@@ -224,7 +224,7 @@ exports.downloadProcessedFile = async (req, res) => {
 
 
 // - 全體增加欄位
-exports.addNewLabel_all = async (req, res) => {
+exports.addExtractionLabel_all = async (req, res) => {
     try {
         const processedDirectory = path.join(__dirname, '..', 'uploads', 'processed');
 
@@ -257,7 +257,7 @@ exports.addNewLabel_all = async (req, res) => {
         res.status(200).send(req.body);
     } catch (error) {
         res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-        res.status(500).send(`[addNewLabel_all] Error : ${error.message || error}`);
+        res.status(500).send(`[addExtractionLabel_all] Error : ${error.message || error}`);
     }
 }
 
