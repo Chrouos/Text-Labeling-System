@@ -29,7 +29,6 @@
         display: none !important;  /* 隐藏文本 */
     }
 }
-  
 
 .ant-btn-beChosen {
     color: #000000;
@@ -123,4 +122,16 @@
     text-overflow: ellipsis;
     
     transition: 0.4s;
+}
+
+.switch-checkedAll {
+    background: #3a3c4f19 !important;
+}
+
+.ant-switch-inner-unchecked {
+    color:rgb(0, 0, 0) !important;
+}
+
+.ant-switch.switch-checkedAll.ant-switch-checked {
+    background: #268a2dc0 !important;
 }

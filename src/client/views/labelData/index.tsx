@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import BasePageContainer from '../../components/layout/PageContainer';
 import {
-  BreadcrumbProps,
   Card,
   Col,
   Row,
@@ -11,12 +10,11 @@ import {
   Button,
   Form,
   Typography,
-  Radio,
   Pagination,
-  Progress,
   Modal,
   Spin,
-  Checkbox, Divider
+  Checkbox, Divider,
+  Switch, Space
 } from 'antd';
 import { message } from 'antd';
 import type { UploadProps } from 'antd';
@@ -104,10 +102,11 @@ const labelData = () => {
     const [currentProcessedFields, setCurrentProcessedFields] = useState<ProcessedFieldsType[]>([]); 
     const [currentSelectedLabel, setCurrentSelectedLabel] = useState<string>(""); // = 選擇的新欄位
     
+    // - other options.
     const [processLabelCheckedList, setProcessLabelCheckedList] = useState<CheckboxValueType[]>([]);
     const [processLabelOptions, setProcessLabelOptions] = useState<string[]>([]);
     const [newExtractionLabel, setNewExtractionLabel] = useState<string>("");
-
+    const [isLockingCheckedAll, setIsLockingCheckedAll] = useState<boolean>(false);
 
     // -------------------------------------------------- API Settings
 
@@ -402,8 +401,18 @@ const labelData = () => {
     };
     // ----- handle -> 若修改了 Processed Label
     const handleChange = (list: CheckboxValueType[]) => {
-        setProcessLabelCheckedList(list);
+        if (!isLockingCheckedAll) {
+            setProcessLabelCheckedList(list);
+        }
     };
+    
+    // ----- handle -> 鎖定全選
+    const handleLockingCheckedAll = (isLocking: boolean) => {
+        setIsLockingCheckedAll(!isLockingCheckedAll);
+        if (isLocking) { 
+            setProcessLabelCheckedList(processLabelOptions);
+        }
+    }
 
     // ----- handle -> 對要擷取內容 HighLight, 並修改相關資訊，送到 Fields Input 中
     const handleTextSelection = (event: React.SyntheticEvent<HTMLTextAreaElement>) => {
@@ -570,7 +579,8 @@ const labelData = () => {
 
                         <Button 
                             className='col-span-1 ant-btn-store'
-                            onClick={uploadProcessedFile} >
+                            onClick={uploadProcessedFile} 
+                            disabled={currentFileName == null || contentList.length === 0}>
                             Store </Button>
 
                     </div>
@@ -651,7 +661,10 @@ const labelData = () => {
 
                 {isVisible[1] && <>
                     <Card bordered={false} className="w-full cursor-default grid gap-4 mb-4"  title={"Labels Checked"} 
-                        extra={<Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(1)}></Button>}>                
+                        extra={ <div> 
+                                    <Switch className='switch-checkedAll' unCheckedChildren="關閉鎖定全選" checkedChildren="鎖定全選"  onChange={handleLockingCheckedAll} /> 
+                                    <Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(1)}></Button>
+                                </div>}>                
 
                         <Checkbox 
                             className='mb-4'
