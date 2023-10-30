@@ -124,14 +124,19 @@
     transition: 0.4s;
 }
 
+
 .switch-checkedAll {
-    background: #3a3c4f19 !important;
+    background: #3a3c4f36 !important;
 }
 
 .ant-switch-inner-unchecked {
     color:rgb(0, 0, 0) !important;
+    
 }
-
+.ant-switch-inner-unchecked {
+    font-weight: bold;
+    
+}
 .ant-switch.switch-checkedAll.ant-switch-checked {
-    background: #268a2dc0 !important;
+    background: #258d2c !important;
 }

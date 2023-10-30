@@ -19,7 +19,7 @@ import {
 import { message } from 'antd';
 import type { UploadProps } from 'antd';
 import type { UploadFile } from 'antd/es/upload/interface';
-import { UploadOutlined, CheckOutlined, DeleteOutlined, CloseOutlined, DownloadOutlined, DownOutlined, UpOutlined, ClearOutlined} from '@ant-design/icons';
+import { UploadOutlined, CheckOutlined, DeleteOutlined, CloseOutlined, DownloadOutlined, DownOutlined, UpOutlined, ClearOutlined, MonitorOutlined} from '@ant-design/icons';
 import Highlighter from "react-highlight-words";
 
 import { webRoutes } from '../../routes/web';
@@ -42,7 +42,7 @@ const CheckboxGroup = Checkbox.Group;
 // - 定義類型
 type SelectType = { value: string; label: string; };
 type ProcessedContentType = { processed?: ProcessedFieldsType[]; [key: string]: any; };
-type ProcessedFieldsType = { name: string; value: string; the_surrounding_words: string; regular_expression_match: string, regular_expression_formula: string, gpt_value: string };
+type ProcessedFieldsType = { name: string; value: string; the_surrounding_words: string; regular_expression_match: string, regular_expression_formula: string, gpt_value: string }; // connecting change: exampleProcessedFields
 
 type ModalFormatterType = {
     isOpen: boolean;
@@ -156,14 +156,19 @@ const labelData = () => {
                 ));
                 setProcessLabelOptions(processedNameList);
 
-                // @ 查看內容有重複欄位顯示在 CheckedList.
-                const filteredList = processedNameList.filter((item:string[]) => {
-                    return response.data[0][formattedKeys[0].value].includes(item);
-                });
-                setProcessLabelCheckedList(filteredList);
+                // @ 確認是否全選
+                if (isLockingCheckedAll) {
+                    setProcessLabelCheckedList(processedNameList);
+                }
+                else {
+                    // @ 查看內容有重複欄位顯示在 CheckedList.
+                    const filteredList = processedNameList.filter((item:string[]) => {
+                        return response.data[0][formattedKeys[0].value].includes(item);
+                    });
+                    setProcessLabelCheckedList(filteredList);
+                }
+                setNewExtractionLabel("");
             }
-
-
         })
         .catch((error) => {
             handleErrorResponse(error);
@@ -274,7 +279,7 @@ const labelData = () => {
 
         defaultHttp.post(apiRoutes.addExtractionLabel_all, request)
         .then((response) => {  
-            fetchProcessedFileContent(currentFileName || "");
+            // fetchProcessedFileContent(currentFileName || "");
         })
         .catch((error) => {
             handleErrorResponse(error);
@@ -288,14 +293,13 @@ const labelData = () => {
         
         setIsLoading(true);
         const request = {
-        fileName: currentFileName,
-        content:contentList,
-        labelToRemove: labelToRemove
+            fileName: currentFileName,
+            content:contentList,
+            labelToRemove: labelToRemove
         }
 
         defaultHttp.post(apiRoutes.removeLabel_all, request)
         .then((response) => {
-            fetchProcessedFileContent(currentFileName || "");
         })
         .catch((error) => {
             handleErrorResponse(error);
@@ -336,17 +340,37 @@ const labelData = () => {
 
     // ----- autoVariable -> 自動生成
     const createProcessedFields = <T extends Partial<ProcessedFieldsType>>(fields: T): ProcessedFieldsType => {
+
+        const exampleProcessedFields: ProcessedFieldsType = {
+            name: "",
+            value: "",
+            the_surrounding_words: "",
+            regular_expression_match: "",
+            regular_expression_formula: "",
+            gpt_value: "",
+          };
         
-        const defaultFields = Object.keys(fields).reduce((acc, key) => {
+          // 使用 Object.keys 在這個示例對象上，以獲取所有的鍵
+          const defaultFields = Object.keys(exampleProcessedFields).reduce((acc, key) => {
             acc[key as keyof ProcessedFieldsType] = "";
             return acc;
           }, {} as ProcessedFieldsType);
-
+          
         return {
             ...defaultFields,
             ...fields
         };
+    }
 
+    // ----- void -> 更新 processed 到 contentList 
+    const updateProcessedToContent = (updatedProcessedFields: ProcessedFieldsType[]) => {
+        const updateCurrentProcessedFields = [...contentList];
+        const currentContent = updateCurrentProcessedFields[readTheCurrentPage(currentPage)];
+        updateCurrentProcessedFields[readTheCurrentPage(currentPage)] = {
+            ...currentContent,
+            processed: updatedProcessedFields
+        };
+        setContentList(updateCurrentProcessedFields);
     }
 
     // -------------------------------------------------- Other Functions
@@ -384,8 +408,15 @@ const labelData = () => {
         const temp_newExtractionLabel = createProcessedFields({name: newExtractionLabel});
         setCurrentProcessedFields(prevLabelFields => [...prevLabelFields, temp_newExtractionLabel]);
         setNewExtractionLabel("");
-        addExtractionLabel_all();
 
+        const allLabelOptions = [...processLabelOptions, newExtractionLabel]
+        setProcessLabelOptions(allLabelOptions);
+        
+        if (currentFileContentVisual.includes(newExtractionLabel)){
+            setProcessLabelCheckedList([...processLabelCheckedList, newExtractionLabel])
+        }
+
+        addExtractionLabel_all();
         setIsLoading(false);
     }
 
@@ -442,15 +473,8 @@ const labelData = () => {
             })
 
             setCurrentProcessedFields(updateFields);
-
-            // @ 更新整個檔案
-            const updateCurrentProcessedFields = [...contentList];
-            const currentContent = updateCurrentProcessedFields[readTheCurrentPage(currentPage)];
-            updateCurrentProcessedFields[readTheCurrentPage(currentPage)] = {
-                ...currentContent,
-                processed: updateFields
-            };
-            setContentList(updateCurrentProcessedFields);
+            updateProcessedToContent(updateFields); // @ 更新整個檔案
+            
         }
     } 
 
@@ -464,8 +488,23 @@ const labelData = () => {
 
         const handleDelete = (indexToDelete: number, labelName:string) => {
             setIsLoading(true)
+
+            if (currentSelectedLabel === labelName) {
+                
+                setCurrentSelectedLabel("");
+                console.log(currentSelectedLabel)
+            }
+
             const updatedProcessedFields = currentProcessedFields.filter((_, index) => index !== indexToDelete);
+            const updateCheckedList = processLabelCheckedList.filter((name, index) => name !== labelName);
+            const updateProcessLabelOptions = processLabelOptions.filter((name, index) => name !== labelName);
+
             setCurrentProcessedFields(updatedProcessedFields); 
+            setProcessLabelOptions(updateProcessLabelOptions);
+            setProcessLabelCheckedList(updateCheckedList);
+
+
+            updateProcessedToContent(updatedProcessedFields);   // @ 更新整個檔案
             removeLabel_all(labelName);
             setIsLoading(false)
         };
@@ -498,8 +537,8 @@ const labelData = () => {
             {currentProcessedFields.map((originalField: ProcessedFieldsType, originalIndex: number) => {
                 if (processLabelCheckedList.includes(originalField.name)) {
                     return (
-                        <div key={originalIndex}>
-                            <Form.Item label={<span>{originalField.name}</span>}>
+                        <div key={originalIndex} style={{display: 'flex', alignItems: 'center'}}>
+                            <Form.Item label={<span  style={{  color: originalField.name === currentSelectedLabel ? 'red' : 'black'  }}>{originalField.name}</span>}>
                                 <div className='grid grid-cols-12 gap-4' style={{alignItems: 'center'}} onClick={() => {handleChoose(originalField.name)}}>
                                     <TextArea 
                                         className="col-span-10" 
@@ -515,15 +554,12 @@ const labelData = () => {
             })}
         
         </> )
-
     }
-    
 
     // ----- 進入網頁執行一次 Init
     useEffect(() => {
         fetchFilesName();
     }, []);
-
 
     return (
     <Spin spinning={isLoading} tip="Loading...">
@@ -636,7 +672,7 @@ const labelData = () => {
                             </Button>
 
                             <Upload maxCount={1} {...uploadFileProps}  >
-                                <Button type="dashed" className="w-full ant-btn-action"  icon={<UploadOutlined />}> Click to Upload </Button>
+                                <Button type="dashed" className="w-full ant-btn-action" icon={<UploadOutlined />}> <span className="btn-text">Upload File </span> </Button>
                             </Upload>
                         </div>
 
@@ -645,14 +681,14 @@ const labelData = () => {
                             <Input 
                                 className='w-full col-span-4'
                                 addonBefore="/" addonAfter="/g" />
-                            <Button className="w-full ant-btn-action" onClick={handleReAction}> RE - Action
+                            <Button className="w-full ant-btn-action" onClick={handleReAction} icon={<MonitorOutlined />}> <span className="btn-text">正規化 </span>
                             </Button>
                         </div>
                         
                         <p className='text-xl mb-4'>GPT</p>
                         <div className='grid gap-2 mb-4 grid-cols-2'>
-                            <Button className="w-full ant-btn-action mb-4" >current - GPT retrieve</Button>
-                            <Button className="w-full ant-btn-all_gpt" >all - GPT retrieve</Button>
+                            <Button className="w-full ant-btn-action mb-4" >GPT搜索(當前頁面)</Button>
+                            <Button className="w-full ant-btn-all_gpt" >GPT搜索(全部)</Button>
                         </div>
                     
                     </Card>
