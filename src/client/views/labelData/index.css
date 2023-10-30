@@ -83,3 +83,44 @@
     display: flex;
     justify-content: center;
 }
+
+
+.ant-btn-store {
+    border-color: #43a546;
+    color:#43a546;
+    
+    font-weight: bold
+}
+
+.ant-btn-store:hover {
+    color: white !important;
+    background-color: #43a546;
+    
+    font-weight: bold
+}
+
+.ant-btn-uploadFile:hover {
+    border: #000000 !important;
+    color: black !important;
+}
+
+.p-current-dele:hover {
+    text-decoration: line-through;
+    background-color: #0c0c0c18;
+    font-size: 1.2rem;
+    cursor: pointer;
+    overflow: visible;  
+    text-overflow: clip; 
+
+    transition: 0.4s;
+}
+
+.p-current-dele {
+    border: 1px solid #00000024;
+    padding: 5%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    
+    transition: 0.4s;
+}

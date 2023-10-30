@@ -43,7 +43,7 @@ const CheckboxGroup = Checkbox.Group;
 
 // - 定義類型
 type SelectType = { value: string; label: string; };
-type ProcessedContentType = { fileName:string, content: string; processed?: ProcessedFieldsType[]; };
+type ProcessedContentType = { processed?: ProcessedFieldsType[]; [key: string]: any; };
 type ProcessedFieldsType = { name: string; value: string; the_surrounding_words: string; regular_expression_match: string, regular_expression_formula: string, gpt_value: string };
 
 type ModalFormatterType = {
@@ -65,7 +65,7 @@ const labelData = () => {
     const [messageApi, contextHolder] = message.useMessage();
 
     const [isLoading, setIsLoading] = useState(false);
-    const [isVisible, setIsVisible] = useState<boolean[]>([false, false, true, true, true]);
+    const [isVisible, setIsVisible] = useState<boolean[]>([false, true, false, true, true]);
     const chooseIsVisible = (index: number) => {
         return (event: React.MouseEvent<HTMLElement>) => {
             const newIsVisible = [...isVisible];
@@ -163,6 +163,25 @@ const labelData = () => {
                 });
                 setProcessLabelCheckedList(filteredList);
             }
+
+
+        })
+        .catch((error) => {
+            handleErrorResponse(error);
+        }).finally(() => { setIsLoading(false); });
+    }
+
+    // ----- API -> 存擋
+    const uploadProcessedFile = async () => {
+
+        setIsLoading(true); 
+        const request = {
+            fileName: currentFileName,
+            content: contentList
+        }
+
+        defaultHttp.post(apiRoutes.uploadProcessedFile, request)
+        .then((response) => {
 
 
         })
@@ -345,6 +364,8 @@ const labelData = () => {
 
         setCurrentPage(page);
         setCurrentProcessedFields(contentList[indexPage]?.processed || []);
+        setCurrentFileContentVisual(contentList[indexPage][currentContentFieldKey]);
+        
     }
 
     // ----- 增加處理欄位
@@ -424,6 +445,11 @@ const labelData = () => {
         }
     } 
 
+    // ----- 處理 RE 
+    const handleReAction = () => {
+        
+    }
+
     // ----- Template -> 編輯欄位
     const editFieldsLabelTemplate = () => {
 
@@ -454,6 +480,10 @@ const labelData = () => {
             setIsLoading(false)
         };
 
+        const handleChoose = (labelName: string) => {
+            setCurrentSelectedLabel(labelName)
+        }
+
         return ( <>
         
             {currentProcessedFields.map((originalField: ProcessedFieldsType, originalIndex: number) => {
@@ -461,13 +491,13 @@ const labelData = () => {
                     return (
                         <div key={originalIndex}>
                             <Form.Item label={<span>{originalField.name}</span>}>
-                                <div className='grid grid-cols-12 gap-4' style={{alignItems: 'center'}}>
+                                <div className='grid grid-cols-12 gap-4' style={{alignItems: 'center'}} onClick={() => {handleChoose(originalField.name)}}>
                                     <TextArea 
                                         className="col-span-10" 
                                         value={originalField.value}
                                         onChange={(e) => handleUpdate(originalIndex, originalField.name, e.target.value)}  />
 
-                                    <Button className='ant-btn-icon'><DeleteOutlined /></Button>
+                                    <Button className='ant-btn-icon' onClick={() => {handleDelete(originalIndex, originalField.name)}}><DeleteOutlined /></Button>
                                 </div>
                             </Form.Item>
                         </div>
@@ -478,7 +508,6 @@ const labelData = () => {
         </> )
 
     }
-
     
 
     // ----- 進入網頁執行一次 Init
@@ -504,7 +533,7 @@ const labelData = () => {
             <Col xl={14} lg={14} md={14} sm={24} xs={24} style={{ marginBottom: 24}} >
                 <Card bordered={false} className="h-full cursor-default">
 
-                    <div className='grid gap-2 mb-4 grid-cols-5'>
+                    <div className='grid gap-2 mb-4 grid-cols-8'>
                         <Pagination 
                             className='w-full mb-4 col-span-2' 
                             simple 
@@ -515,7 +544,7 @@ const labelData = () => {
                             defaultCurrent={1} /> 
 
                         <Select 
-                            className='col-span-2' 
+                            className='col-span-3' 
                             placeholder="Select the File Name"
                             optionFilterProp="children"
                             filterOption={labelValue_selectedFilterOption}
@@ -526,7 +555,7 @@ const labelData = () => {
                             showSearch />
 
                         <Select 
-                            className='col-span-1' 
+                            className='col-span-2' 
                             placeholder="Select the Fields Name"
                             optionFilterProp="children"
                             filterOption={labelValue_selectedFilterOption}
@@ -538,6 +567,12 @@ const labelData = () => {
                             value={currentContentFieldKey}
                             loading={isLoading} 
                             showSearch />
+
+                        <Button 
+                            className='col-span-1 ant-btn-store'
+                            onClick={uploadProcessedFile} >
+                            Store </Button>
+
                     </div>
 
                     <TextArea
@@ -600,7 +635,7 @@ const labelData = () => {
                             <Input 
                                 className='w-full col-span-4'
                                 addonBefore="/" addonAfter="/g" />
-                            <Button className="w-full ant-btn-action"> RE - Action
+                            <Button className="w-full ant-btn-action" onClick={handleReAction}> RE - Action
                             </Button>
                         </div>
                         
@@ -648,7 +683,10 @@ const labelData = () => {
 
                 {isVisible[3] && <>
                     <Card bordered={false} className="w-full cursor-default grid gap-4 mb-4"  title={"Extraction Labels"} 
-                        extra={<Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(3)}></Button>} 
+                        extra={ <div style={{display: 'flex', alignItems: 'center'}}> 
+                                    <p className='p-current-dele' onClick={()=>{setCurrentSelectedLabel("")}}>{currentSelectedLabel}</p> 
+                                    <Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(3)}></Button> 
+                                </div> } 
                         style={{maxHeight: '60vh', overflowY: 'auto'}}>  
 
                         <Form form={extraction_label_form} name="dynamic_label_form_edit" >
