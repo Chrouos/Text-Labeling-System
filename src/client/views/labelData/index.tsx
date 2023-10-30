@@ -681,14 +681,15 @@ const labelData = () => {
                             <Input 
                                 className='w-full col-span-4'
                                 addonBefore="/" addonAfter="/g" />
-                            <Button className="w-full ant-btn-action" onClick={handleReAction} icon={<MonitorOutlined />}> <span className="btn-text">正規化 </span>
+                            <Button className="w-full ant-btn-action" onClick={handleReAction} icon={<MonitorOutlined />} disabled={currentFileName == null || contentList.length === 0}> 
+                                <span className="btn-text" >正規化 </span> 
                             </Button>
                         </div>
                         
                         <p className='text-xl mb-4'>GPT</p>
                         <div className='grid gap-2 mb-4 grid-cols-2'>
-                            <Button className="w-full ant-btn-action mb-4" >GPT搜索(當前頁面)</Button>
-                            <Button className="w-full ant-btn-all_gpt" >GPT搜索(全部)</Button>
+                            <Button className="w-full ant-btn-action mb-4" disabled={currentFileName == null || contentList.length === 0} >GPT搜索(當前頁面)</Button>
+                            <Button className="w-full ant-btn-all_gpt" disabled={currentFileName == null || contentList.length === 0} >GPT搜索(全部)</Button>
                         </div>
                     
                     </Card>
