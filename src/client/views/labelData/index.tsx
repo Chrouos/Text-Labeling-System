@@ -63,7 +63,7 @@ const labelData = () => {
     const [messageApi, contextHolder] = message.useMessage();
 
     const [isLoading, setIsLoading] = useState(false);
-    const [isVisible, setIsVisible] = useState<boolean[]>([false, true, false, true, true]);
+    const [isVisible, setIsVisible] = useState<boolean[]>([true, true, false, true, true]);
     const chooseIsVisible = (index: number) => {
         return (event: React.MouseEvent<HTMLElement>) => {
             const newIsVisible = [...isVisible];
@@ -107,6 +107,7 @@ const labelData = () => {
     const [processLabelOptions, setProcessLabelOptions] = useState<string[]>([]);
     const [newExtractionLabel, setNewExtractionLabel] = useState<string>("");
     const [isLockingCheckedAll, setIsLockingCheckedAll] = useState<boolean>(false);
+    const [REFormula, setReFormula] = useState<string>("");
 
     // -------------------------------------------------- API Settings
 
@@ -258,7 +259,7 @@ const labelData = () => {
             
         })
         .catch((error) => {
-            handleErrorResponse(error);
+            handleErrorResponse(error); 
         }).finally(() => {
             setIsLoading(false);
         });
@@ -436,6 +437,11 @@ const labelData = () => {
             setProcessLabelCheckedList(list);
         }
     };
+
+    // ----- handle -> 修改 re 公式
+    const handleREFormulaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setReFormula(e.target.value);
+    }
     
     // ----- handle -> 鎖定全選
     const handleLockingCheckedAll = (isLocking: boolean) => {
@@ -480,6 +486,38 @@ const labelData = () => {
 
     // ----- 處理 RE 
     const handleReAction = () => {
+
+        // - Loading Progress
+        setIsLoading(true);
+
+        // - Start to Regualr Expression 
+        const rExp: RegExp = new RegExp(REFormula, 'g');
+
+        // @ for - 透過迴圈將每一個 contentList 的元素進行擷取
+        const newProcessedFields = contentList.map((content, index) => {
+            
+            const preREContent = content[currentContentFieldKey]; 
+            const match = rExp.exec(preREContent);
+            if (content['processed'] ) {
+                content['processed'].forEach((field: ProcessedFieldsType) => {
+                    
+                    field.regular_expression_formula = REFormula;
+                    if(match) field.regular_expression_match = match[1] || "";
+                    else field.regular_expression_match = "";
+                    
+                });
+            }
+
+            return content;
+        })
+
+        async function handleProcessAndUpload() {
+            await setContentList(newProcessedFields);
+            uploadProcessedFile();
+        }
+
+        // - Loading Done
+        setIsLoading(false);
         
     }
 
@@ -680,7 +718,8 @@ const labelData = () => {
                         <div className='grid gap-2 mb-4 grid-cols-5'>
                             <Input 
                                 className='w-full col-span-4'
-                                addonBefore="/" addonAfter="/g" />
+                                addonBefore="/" addonAfter="/g"
+                                value={REFormula} onChange={handleREFormulaChange} />
                             <Button className="w-full ant-btn-action" onClick={handleReAction} icon={<MonitorOutlined />} disabled={currentFileName == null || contentList.length === 0}> 
                                 <span className="btn-text" >正規化 </span> 
                             </Button>

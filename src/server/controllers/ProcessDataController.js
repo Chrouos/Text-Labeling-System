@@ -505,6 +505,7 @@ function splitText(text, input_token=2048, now_token = 0) {
     return textList_result;
 }
 
+
 const chinese_to_int = (text) => {
     const num_dict = {
       '零': '0', '０': '0',
@@ -531,19 +532,101 @@ const chinese_to_int = (text) => {
     }
     
     return process_text;
-  }
+}
   
+function is_number(n) {
+    return !isNaN(parseFloat(n)) && isFinite(n);
+}
+  
+  
+const translate = (input_str) => {
 
+    // @ 未輸入任何東西
+    if (input_str === "") { return 0; }
 
+    // @ 變數區
+    let result_arabic = 0;
+    let temp_arabic = '';
+    let unit = 1;  // 單位（十、百、千、萬）
 
+    // @ 轉換中文到數字
+    for (let index = 0; index < input_str.length; index ++) {
+    
+    const char = input_str[index];
+
+    // @ 若不需要轉換就先存起來跳過
+    if (is_number(char)) temp_arabic += char
+
+    else {
+    
+        if (temp_arabic === '') temp_arabic = 1
+
+            // @ 選擇單位
+            if (char === '萬') unit = 10000
+            else if (char === '仟' || char === '千') unit = 1000;
+            else if (char === '佰' || char === '百') unit = 100;
+            else if (char === '拾' || char === '十') unit = 10;
+            else unit = 1;
+
+            result_arabic += temp_arabic * unit;
+            temp_arabic = '';
+
+        }
+
+    }
+
+    if (temp_arabic != '') {
+        const isAbbreviation = (is_number(input_str[input_str.length - 2])) ? 1 : unit / 10
+        result_arabic += parseInt(temp_arabic) * (isAbbreviation);
+    }
+
+    return result_arabic;
+}
+  
 exports.formatterProcessedContent = async (req, res) => {
     try {
+
+        /**
+         * fileName
+         * preFormatterLabel
+         * preFormatterMethod
+         */
+
         // - Data Preparation
-        const requestContent = req.body;
+        const fileName = req.body.fileName;
+        const preFormatterLabel = req.body.preFormatterLabel;
+        const preFormatterMethod = req.body.preFormatterMethod;
+
         var responseData = [];
 
-        console.log(chinese_to_int)
 
+        // @ 1. 讀取資料 ../uploads/processed
+        const processedDirectory = path.join(__dirname, '..', 'uploads', 'processed');
+        const files = fs.readdirSync(processedDirectory); 
+
+        // @ 2. 過濾出.txt 檔案且名稱符合 req.body.fileName
+        const targetFile = files.find(file => path.extname(file) === '.txt' && file === req.body.fileName);
+
+        // @ 3. 讀取檔案
+        if (targetFile) {
+            const filePath = path.join(processedDirectory, targetFile);
+            const fileContent = fs.readFileSync(filePath, 'utf8');
+            const jsonLines = fileContent.trim().split('\n').map(line => JSON.parse(line));
+
+            //TODO: 進行您需要的操作
+            jsonLines.forEach(jsonLine => {
+                jsonLine.processed.forEach(item => {
+                    if (item.name === fileName) {
+                        item.regular_expression_match = translate(item.value);
+                    }
+                });
+                responseData.push(jsonLine);
+            });
+            
+        } else {
+            res.status(404).send('File not found.');
+        }
+        
         res.status(200).send(responseData);
     } catch (error) {
         res.setHeader('Content-Type', 'text/plain; charset=utf-8');

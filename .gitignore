@@ -7,3 +7,5 @@ src/server/uploads/files/
 /src/server/config/development.js
 
 .DS_Store
+
+.vscode/
