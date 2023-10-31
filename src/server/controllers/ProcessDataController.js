@@ -505,6 +505,35 @@ function splitText(text, input_token=2048, now_token = 0) {
     return textList_result;
 }
 
+const chinese_to_int = (text) => {
+    const num_dict = {
+      '零': '0', '０': '0',
+      '壹': '1', '一': '1', '１': '1',
+      '貳': '2', '二': '2', '２': '2',
+      '參': '3', '三': '3', '叁': '3', '参': '3', '３': '3',
+      '肆': '4', '四': '4', '４': '4',
+      '伍': '5', '五': '5', '５': '5',
+      '陸': '6', '六': '6', '６': '6',
+      '柒': '7', '七': '7', '７': '7',
+      '捌': '8', '八': '8', '８': '8',
+      '玖': '9', '九': '9', '９': '9',
+    };
+    
+    let process_text = '';
+    
+    for(let i = 0; i < text.length; i++) {
+      const char_index = text[i];
+      if (num_dict.hasOwnProperty(char_index)) {
+        process_text += num_dict[char_index];
+      } else {
+        process_text += char_index;
+      }
+    }
+    
+    return process_text;
+  }
+  
+
 
 
 exports.formatterProcessedContent = async (req, res) => {
@@ -512,6 +541,8 @@ exports.formatterProcessedContent = async (req, res) => {
         // - Data Preparation
         const requestContent = req.body;
         var responseData = [];
+
+        console.log(chinese_to_int)
 
         res.status(200).send(responseData);
     } catch (error) {
