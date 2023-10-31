@@ -513,10 +513,9 @@ exports.formatterProcessedContent = async (req, res) => {
         const requestContent = req.body;
         var responseData = [];
 
-
         res.status(200).send(responseData);
     } catch (error) {
         res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-        res.status(500).send(`[gptRetrieve] Error : ${error.message || error}`);
+        res.status(500).send(`[formatterProcessedContent] Error : ${error.message || error}`);
     }
 };
