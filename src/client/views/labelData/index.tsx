@@ -63,7 +63,7 @@ const labelData = () => {
     const [messageApi, contextHolder] = message.useMessage();
 
     const [isLoading, setIsLoading] = useState(false);
-    const [isVisible, setIsVisible] = useState<boolean[]>([true, true, false, true, true]);
+    const [isVisible, setIsVisible] = useState<boolean[]>([false, true, false, true, false]);
     const chooseIsVisible = (index: number) => {
         return (event: React.MouseEvent<HTMLElement>) => {
             const newIsVisible = [...isVisible];
@@ -88,6 +88,35 @@ const labelData = () => {
     const [currentFileName, setCurrentFileName] = useState<string | null>(null);
     const [filesNameList, setFilesNameList] = useState<SelectType[]>([]);
     const [currentFileContentVisual, setCurrentFileContentVisual] = useState<string>("");
+    const [isBreakSentence, setIsBreakSentence] = useState<boolean>(true);
+    const breakSentence_CurrentFileContentVisual = () => {
+
+        if (isBreakSentence == false)
+            return currentFileContentVisual
+
+        let sentences: string[] = [];
+        let sentence: string = "";
+    
+        for (let char of currentFileContentVisual) {
+            if (char === '（' || char ==='(' ) {
+                sentences.push("\t" + sentence);
+                sentence = "";
+            }
+
+            sentence += char;
+            
+            if (char === '。' || char === '？' || char === '！') {
+                sentences.push(sentence + "\n");
+                sentence = "";
+            }
+            if (char === '：') {
+                sentences.push(sentence + "\n");
+                sentence = "";
+            }
+        }
+        return sentences.join("");
+    }
+    
     const readTheCurrentPage = (page: number) => {
         const fileIndex = (page > 0) ? page - 1 : 0;
         return fileIndex;
@@ -372,6 +401,7 @@ const labelData = () => {
             processed: updatedProcessedFields
         };
         setContentList(updateCurrentProcessedFields);
+        return updateCurrentProcessedFields
     }
 
     // -------------------------------------------------- Other Functions
@@ -389,6 +419,18 @@ const labelData = () => {
         setCurrentPage(page);
         setCurrentProcessedFields(contentList[indexPage]?.processed || []);
         setCurrentFileContentVisual(contentList[indexPage][currentContentFieldKey]);
+
+        // @ 確認是否全選
+        if (isLockingCheckedAll) {
+            setProcessLabelCheckedList(processLabelOptions);
+        }
+        else {
+            // @ 查看內容有重複欄位顯示在 CheckedList.
+            const filteredList = processLabelOptions.filter((item:string) => {
+                return currentFileContentVisual.includes(item);
+            });
+            setProcessLabelCheckedList(filteredList);
+        }
         
     }
 
@@ -484,7 +526,63 @@ const labelData = () => {
         }
     } 
 
-    // ----- 處理 RE 
+    // ----- handle -> 處理「當前」頁面的 GPT
+    const handleGptAction = () => {
+
+        setIsLoading(true);
+
+        const request = {
+          processedFields: currentProcessedFields,
+          currentFileContentVisual: currentFileContentVisual,
+        }
+    
+        defaultHttp.post(apiRoutes.gptRetrieve, request)
+          .then((response) => {
+    
+            type respGPTValue = { name: string, gpt_value: string}
+            response.data.labelFields.forEach((responseItem: respGPTValue) => {
+                currentProcessedFields.forEach(processedField => {
+                    if (processedField.name === responseItem.name) {
+                        processedField.gpt_value = responseItem.gpt_value;
+                    }
+                });
+            });
+    
+            updateProcessedToContent(currentProcessedFields);
+          })
+          .catch((error) => {})
+          .finally(() => { setIsLoading(false); })
+    }
+
+    // ----- handle -> 處理「全部」頁面的 GPT
+    const handleGptActionAll = () => {
+        setIsLoading(true);
+  
+        const request = {
+          content:  contentList,
+          contentKey: currentContentFieldKey
+        }
+  
+        defaultHttp.post(apiRoutes.gptRetrieve_all, request)
+          .then((response) => { 
+            type responseList = []
+            type responseItem = {name: string, gpt_value: string}
+            response.data.map((responseList: responseList, responseListIndex:number) => {
+              responseList.map((responseItem: responseItem, responseItemIndex) => {
+                contentList[responseListIndex].processed?.forEach((item, index) => {
+                  if (item.name === responseItem.name){
+                    item.gpt_value = responseItem.gpt_value;
+                  }
+                })  
+              })
+            });
+            setContentList(contentList)
+          })
+          .catch((error) => {})
+          .finally(() => { setIsLoading(false); })
+    }
+
+    // ----- handle -> 處理 RE 
     const handleReAction = () => {
 
         // - Loading Progress
@@ -517,6 +615,7 @@ const labelData = () => {
         }
 
         // - Loading Done
+        handleProcessAndUpload();
         setIsLoading(false);
         
     }
@@ -665,8 +764,10 @@ const labelData = () => {
                         // autoSize={{minRows: 21, maxRows: 21}}
                         style={{ height: '80vh', marginBottom: 24, fontSize: '1.2rem' }}
                         placeholder="欲標記內容"
-                        value={currentFileContentVisual}
+                        value={breakSentence_CurrentFileContentVisual()}
                         onSelect={handleTextSelection} />
+
+                    是否自動斷句：<Switch defaultChecked onChange={(e) => setIsBreakSentence(e)} /> 
 
                 </Card>
             </Col>
@@ -720,15 +821,18 @@ const labelData = () => {
                                 className='w-full col-span-4'
                                 addonBefore="/" addonAfter="/g"
                                 value={REFormula} onChange={handleREFormulaChange} />
-                            <Button className="w-full ant-btn-action" onClick={handleReAction} icon={<MonitorOutlined />} disabled={currentFileName == null || contentList.length === 0}> 
-                                <span className="btn-text" >正規化 </span> 
+                            <Button className="w-full ant-btn-action" onClick={handleReAction} icon={<MonitorOutlined />} 
+                                    disabled={currentFileName == null || contentList.length === 0 || currentSelectedLabel === ""}> 
+                                <span className="btn-text" > 正規化 </span> 
                             </Button>
                         </div>
                         
                         <p className='text-xl mb-4'>GPT</p>
                         <div className='grid gap-2 mb-4 grid-cols-2'>
-                            <Button className="w-full ant-btn-action mb-4" disabled={currentFileName == null || contentList.length === 0} >GPT搜索(當前頁面)</Button>
-                            <Button className="w-full ant-btn-all_gpt" disabled={currentFileName == null || contentList.length === 0} >GPT搜索(全部)</Button>
+                            <Button className="w-full ant-btn-action mb-4" onClick={handleGptAction}
+                                disabled={currentFileName == null || contentList.length === 0} >GPT搜索(當前頁面)</Button>
+                            <Button className="w-full ant-btn-all_gpt" onClick={handleGptActionAll}
+                                disabled={currentFileName == null || contentList.length === 0} >GPT搜索(全部)</Button>
                         </div>
                     
                     </Card>
@@ -747,7 +851,7 @@ const labelData = () => {
                             indeterminate={processLabelCheckedList.length > 0 && processLabelCheckedList.length < processLabelOptions.length} 
                             checked={processLabelOptions.length === processLabelCheckedList.length}
                             onChange={handleCheckAllChange}
-                            >
+                            disabled={isLockingCheckedAll} >
                             Check all
                         </Checkbox>
 

@@ -337,19 +337,24 @@ exports.gptRetrieve = async (req, res) => {
         // - Data Preparation
         const requestData = req.body;
         var responseData = {};
-        responseData.labelFields = requestData.labelFields.map(item => {
-            return {
-                name: item.name,
-                gpt_value: item.gpt_value
-            }
-        })
+        if (Array.isArray(requestData.processedFields)) {
+            responseData.processedFields = requestData.processedFields.map(item => {
+                return {
+                    name: item.name,
+                    gpt_value: item.gpt_value
+                }
+            })
+        } else {
+            throw new Error('processedFields must be an array');
+        }
 
         // - GPT Question
         const system_content = "你現在是資料擷取專家，你需要按照此JSON 格式的 name 擷取填入對應的 gpt_value。只需要回傳 JSON 。注意！原本的結構不可以變更， \n \n"     
 
         // - 1. text, 把大量文本拆成 2048 以下的 token 數量，成為 List
-        const originalText = req.body.content;
-        var textList = splitText(originalText, input_token = 2048, now_token = (JSON.stringify(responseData.labelFields).length + system_content.length));
+        const originalText = requestData.currentFileContentVisual;
+
+        var textList = splitText(originalText, input_token = 2048, now_token = (JSON.stringify(responseData.processedFields).length + system_content.length));
 
         // - 2. 將 text List 送給 GPT做批量 retrieve
         const configCrypto = new ConfigCrypto();
@@ -362,7 +367,7 @@ exports.gptRetrieve = async (req, res) => {
             const messageList = [
                 { 
                     "role": "system", 
-                    "content": system_content + JSON.stringify(responseData.labelFields) 
+                    "content": system_content + JSON.stringify(responseData.processedFields) 
                 },
                 {
                     "role": "user",
@@ -382,7 +387,7 @@ exports.gptRetrieve = async (req, res) => {
             
             try {
                 let parsedJson = JSON.parse(response.choices[0].message.content);
-                responseData.labelFields = parsedJson;
+                responseData.processedFields = parsedJson;
             } catch (e) {
                 console.log("The GPT response is not the Json", response.choices[0].message.content) 
             }
@@ -412,23 +417,34 @@ exports.gptRetrieve_all = async (req, res) => {
         // - GPT Question 
         const system_content = "你現在是資料擷取專家，你需要按照此JSON 格式的 name 擷取填入對應的 gpt_value。只需要回傳 JSON 。結構不可以變更，參考: \n"     
 
+        let countItem = 0;
+        const totalCountItem = requestContent.length;
         for (const contentItem of requestContent) {
-            const originalText = contentItem[contentKey];
-            var textList = splitText(originalText, input_token = 2048, now_token = (JSON.stringify(responseData.labelFields).length + system_content.length));
+            console.log(`GPT Action ALL... count: ${countItem}, totalCountItem: ${totalCountItem}`);
 
-            // @ 只需要留 name, gpt_value
-            var contentItemProcessed_temp = contentItem.processed.map(function (item) {
-                return {
-                    name: item.name,
-                    gpt_value: item.gpt_value
-                }
-            })
+            const originalText = contentItem[contentKey];
+            var processedContent = []
+
+            if (Array.isArray(contentItem.processed)) {
+                processedContent = contentItem.processed.map(item => {
+                    return {
+                        name: item.name,
+                        gpt_value: item.gpt_value
+                    }
+                })
+            } else {
+                throw new Error('processedFields must be an array');
+            }
+
+            var textList = splitText(originalText, input_token = 2048, now_token = (JSON.stringify(processedContent).length + system_content.length));
+            var contentItemProcessed_temp = {}
 
             for (const [index, text] of textList.entries()) {
+                console.log(`Split Text Entries, Total Length: ${textList.length}, Now Count: ${index}`);
                 const messageList = [
                     { 
                         "role": "system", 
-                        "content": system_content + JSON.stringify(contentItemProcessed_temp) 
+                        "content": system_content + JSON.stringify(processedContent) 
                     },
                     {
                         "role": "user",
@@ -453,26 +469,31 @@ exports.gptRetrieve_all = async (req, res) => {
                     console.log("The GPT response is not the Json", response.choices[0].message) 
                 }
             }
+
+            countItem += 1;
             responseData.push(contentItemProcessed_temp);
+            console.log("🚀 ~ file: ProcessDataController.js:475 ~ exports.gptRetrieve_all= ~ contentItemProcessed_temp:", contentItemProcessed_temp)
         }
 
         res.status(200).send(responseData);
     } catch (error) {
         res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-        res.status(500).send(`[gptRetrieve] Error : ${error.message || error}`);
+        res.status(500).send(`[gptRetrieve_all] Error : ${error.message || error}`);
     }
 };
 
 
 
 function splitText(text, input_token=2048, now_token = 0) {
+    console.log(`Split Text, input token: ${input_token}, now token: ${now_token}`)
+
+    if (now_token > input_token) return text;
 
     const maxTokens = input_token - now_token; // = 希望不要超過的 token 數量
     const punctuation = ['。', '！', '？', '.', '!', '?', '，', '、']; // = 斷點的標點符號
 
     var textList_result = [];
     var startIdx = 0, endIdx = maxTokens;
-
 
     // - 走完 全部的text
     while ( startIdx < text.length ){

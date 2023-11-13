@@ -1,5 +1,7 @@
 import { useEffect, useState, FC } from 'react';
 import { Bar } from 'react-chartjs-2';
+import DataLabels from 'chartjs-plugin-datalabels';
+
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -16,7 +18,8 @@ ChartJS.register (
     BarElement,
     Title,
     Tooltip,
-    Legend
+    Legend,
+    DataLabels
 );
 
 interface HorizontalBarChartProps {
@@ -47,6 +50,13 @@ export const HorizontalBarChart: FC<HorizontalBarChartProps>  = (props) => {
             title: {
                 display: true, // => 顯示標題
                 text: 'Chart.js Horizontal Bar Chart',
+            },
+            datalabels: {
+                align: 'center',
+                anchor: 'center',        
+                formatter: function(value: number, context: any) {
+                    return value;
+                }
             },
         },
     };

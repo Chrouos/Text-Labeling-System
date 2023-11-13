@@ -36,7 +36,7 @@ const compareData = () => {
 
     // - Global Settings
     const [isLoading, setIsLoading] = useState(false);
-    const [isVisible, setIsVisible] = useState<boolean[]>([true, true, true, true, true]);
+    const [isVisible, setIsVisible] = useState<boolean[]>([false, true, true, true, false]);
     const chooseIsVisible = (index: number) => {
       return (event: React.MouseEvent<HTMLElement>) => {
         const newIsVisible = [...isVisible];
@@ -74,7 +74,10 @@ const compareData = () => {
 
     // - Chart settings.
     const [compareLabels, setCompareLabels] = useState<string[]>([]);
-    const [compareValueDatasets, setCompareValueDatasets] = useState<number[]>([]);
+    const [groundTruthValueDatasets, setGroundTruthValueDatasets] = useState<number[]>([]);
+    const [compareREDatasets, setCompareREDatasets] = useState<number[]>([]);
+    const [compareGPTDatasets, setCompareGPTDatasets] = useState<number[]>([]);
+
 
     // -------------------------------------------------- API Settings
 
@@ -206,8 +209,10 @@ const compareData = () => {
         setCompareLabels(stringValues);
 
         // - Change the Dataset.
-        const newCompareDatasets: number[] = [];
-        compareLabels.forEach((label) => {
+
+        // @ value
+        const newCompareValueDatasets: number[] = [];
+        stringValues.forEach((label) => {
             let sum = 0;
 
             contentList.forEach((content) => {
@@ -218,11 +223,64 @@ const compareData = () => {
                 })
             })
 
-            newCompareDatasets.push(sum);
+            newCompareValueDatasets.push(sum);
         })
 
-        setCompareValueDatasets(newCompareDatasets);
-    }
+        // @ RE
+        const newCompareREDatasets: number[] = [];
+        stringValues.forEach((label) => {
+            let sum = 0;
+
+            contentList.forEach((content) => {
+                content.processed?.forEach((field) => {
+                    if ( field.name === label ) {
+                        sum += parseFloat(field.regular_expression_match)
+                    }
+                })
+            })
+
+            newCompareREDatasets.push(sum);
+        })
+
+        // @ GPT
+        const newCompareGPTDatasets: number[] = [];
+        stringValues.forEach((label) => {
+            let sum = 0;
+
+            contentList.forEach((content) => {
+                content.processed?.forEach((field) => {
+                    if ( field.name === label ) {
+                        sum += parseFloat(field.gpt_value)
+                    }
+                })
+            })
+            newCompareGPTDatasets.push(sum);
+        })
+
+
+        // @ RE - GroundTruth v.s. GPT - GroundTruth
+        setGroundTruthValueDatasets(newCompareValueDatasets);
+
+        const reVsGroundTruth: number[] = [];
+        const gptVsGroundTruth: number[] = [];
+
+        for (let i = 0; i < newCompareValueDatasets.length; i++) {
+            const groundTruthValue = newCompareValueDatasets[i];
+            const reValue = newCompareREDatasets[i];
+            const gptValue = newCompareGPTDatasets[i];
+
+            const reDifference = Math.abs(reValue - groundTruthValue) / contentList.length;
+            const gptDifference = Math.abs(gptValue - groundTruthValue) / contentList.length;
+
+            reVsGroundTruth.push(reDifference);
+            gptVsGroundTruth.push(gptDifference);
+
+        }
+
+        setCompareREDatasets(reVsGroundTruth);
+        setCompareGPTDatasets(gptVsGroundTruth);
+
+    };
 
     // ----- 初始化
     useEffect(() => {
@@ -246,6 +304,9 @@ const compareData = () => {
                 <Button onClick={chooseIsVisible(0)} className={isVisible[0] ? 'ant-btn-none' : 'ant-btn-notChosen'}>Transform File</Button>
                 <Button onClick={chooseIsVisible(1)} className={isVisible[1] ? 'ant-btn-none' : 'ant-btn-notChosen'}>Files</Button>
                 <Button onClick={chooseIsVisible(2)} className={isVisible[2] ? 'ant-btn-none' : 'ant-btn-notChosen'}>Compare</Button>
+                <Button onClick={chooseIsVisible(3)} className={isVisible[3] ? 'ant-btn-none' : 'ant-btn-notChosen'}>Labels Checked</Button>
+                <Button onClick={chooseIsVisible(4)} className={isVisible[4] ? 'ant-btn-none' : 'ant-btn-notChosen'}>Processed Json</Button>
+
             </div>
             
             <Row gutter={24}>
@@ -299,8 +360,8 @@ const compareData = () => {
                         <HorizontalBarChart
                         labels={compareLabels}
                         datasets={[
-                            {label: "RE", data: [1], borderColor: 'rgb(255, 99, 132)', backgroundColor: 'rgba(255, 99, 132, 0.5)'},
-                            {label: "GPT", data: [3],  borderColor: 'rgb(53, 162, 235)', backgroundColor: 'rgba(53, 162, 235, 0.5)',}
+                            {label: "RE", data: compareREDatasets, borderColor: 'rgb(255, 99, 132)', backgroundColor: 'rgba(255, 99, 132, 0.5)'},
+                            {label: "GPT", data: compareGPTDatasets,  borderColor: 'rgb(53, 162, 235)', backgroundColor: 'rgba(53, 162, 235, 0.5)',}
                         ]} />
 
                     </Card>
@@ -308,7 +369,7 @@ const compareData = () => {
                     
                 </Col>
 
-                <Col xl={12} lg={12} md={12} sm={24} xs={24} style={{ marginBottom: 24, height: '80vh', overflowY: 'auto'}} >
+                <Col xl={12} lg={12} md={12} sm={24} xs={24} style={{ marginBottom: 24, height: '100vh', overflowY: 'auto'}} >
                     { isVisible[1] && <>
                         <Card title="Files" className="w-full cursor-default grid gap-4 mb-4" 
                             extra={<Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(1)}></Button>} >
@@ -338,6 +399,7 @@ const compareData = () => {
                                 indeterminate={processLabelCheckedList.length > 0 && processLabelCheckedList.length < processLabelOptions.length} 
                                 checked={processLabelOptions.length === processLabelCheckedList.length}
                                 onChange={handleCheckAllChange}
+                                disabled={isLockingCheckedAll}
                                 >
                                 Check all
                             </Checkbox>
@@ -361,7 +423,7 @@ const compareData = () => {
                                         pageSize={1} /> 
                                     <Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(4)}></Button>
                                     </div> } 
-                            style={{maxHeight: '60vh', overflowY: 'auto'}} >  
+                            style={{maxHeight: '80vh', overflowY: 'auto'}} >  
                     
                             <Typography>
                                 <pre>{JSON.stringify(processedFields, null, 2)}</pre>
