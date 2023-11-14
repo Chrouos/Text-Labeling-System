@@ -14,7 +14,7 @@ import {
   Modal,
   Spin,
   Checkbox, Divider,
-  Switch, Space
+  Switch, Space, InputNumber
 } from 'antd';
 import { message } from 'antd';
 import type { UploadProps } from 'antd';
@@ -93,29 +93,34 @@ const labelData = () => {
 
         if (isBreakSentence == false)
             return currentFileContentVisual
-
-        let sentences: string[] = [];
-        let sentence: string = "";
     
-        for (let char of currentFileContentVisual) {
-            if (char === '（' || char ==='(' ) {
-                sentences.push("\t" + sentence);
+        let sentences = [];
+        let sentence = "";
+        let currentFileContentArray = Array.from(currentFileContentVisual);
+    
+        for (let i = 0; i < currentFileContentArray.length; i++) {
+
+
+            let char = currentFileContentArray[i];
+            let nextChar = currentFileContentArray[i + 1]; // 取得下一個字符
+            let add_char = char;
+    
+            if (char === '（' || char === '(' ) {
+                add_char = '\t' + add_char
+            }
+    
+            sentence += add_char;
+            if ((char === '。' || char === '？' || char === '！') && !(nextChar === '「' || nextChar === '」')) {
+                sentences.push(sentence + "\n\t");
                 sentence = "";
             }
 
-            sentence += char;
-            
-            if (char === '。' || char === '？' || char === '！') {
-                sentences.push(sentence + "\n");
-                sentence = "";
-            }
-            if (char === '：') {
-                sentences.push(sentence + "\n");
-                sentence = "";
-            }
         }
+        if (sentence) sentences.push(sentence); // 確保最後一句也被加入
         return sentences.join("");
     }
+    
+    
     
     const readTheCurrentPage = (page: number) => {
         const fileIndex = (page > 0) ? page - 1 : 0;
@@ -137,6 +142,7 @@ const labelData = () => {
     const [newExtractionLabel, setNewExtractionLabel] = useState<string>("");
     const [isLockingCheckedAll, setIsLockingCheckedAll] = useState<boolean>(false);
     const [REFormula, setReFormula] = useState<string>("");
+    const [textAreaPx, setTextAreaPx] = useState<number | null>(18);
 
     // -------------------------------------------------- API Settings
 
@@ -762,12 +768,16 @@ const labelData = () => {
                         className='h-full'
                         showCount
                         // autoSize={{minRows: 21, maxRows: 21}}
-                        style={{ height: '80vh', marginBottom: 24, fontSize: '1.2rem' }}
+                        style={{ height: '80vh', marginBottom: 24, fontSize: textAreaPx + 'px' }}
                         placeholder="欲標記內容"
                         value={breakSentence_CurrentFileContentVisual()}
                         onSelect={handleTextSelection} />
 
-                    是否自動斷句：<Switch defaultChecked onChange={(e) => setIsBreakSentence(e)} /> 
+                    <div className='grid grid-cols-11 gap-2'>
+                        <div className='col-span-2' style={{ display: 'flex', alignItems: "center"}}> 是否自動斷句：<Switch defaultChecked onChange={(e) => setIsBreakSentence(e)} /> </div>
+                        <div className='col-span-5' style={{ display: 'flex', alignItems: "center"}}> 字體大小： <InputNumber addonAfter="px" value={textAreaPx} onChange={(e:number|null) => {setTextAreaPx(e)}} /> </div>
+                    </div>
+                    
 
                 </Card>
             </Col>
