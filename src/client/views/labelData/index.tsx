@@ -140,7 +140,7 @@ const labelData = () => {
     const [processLabelCheckedList, setProcessLabelCheckedList] = useState<CheckboxValueType[]>([]);
     const [processLabelOptions, setProcessLabelOptions] = useState<string[]>([]);
     const [newExtractionLabel, setNewExtractionLabel] = useState<string>("");
-    const [isLockingCheckedAll, setIsLockingCheckedAll] = useState<boolean>(false);
+    const [isLockingCheckedAll, setIsLockingCheckedAll] = useState<boolean>(false); // TODO: 改成鎖定目前選擇
     const [REFormula, setReFormula] = useState<string>("");
     const [textAreaPx, setTextAreaPx] = useState<number | null>(18);
 
@@ -714,7 +714,7 @@ const labelData = () => {
             <Button onClick={chooseIsVisible(1)} className={isVisible[1] ? 'ant-btn-none' : 'ant-btn-notChosen'}>Labels Checked</Button>
             <Button onClick={chooseIsVisible(2)} className={isVisible[2] ? 'ant-btn-none' : 'ant-btn-notChosen'}>Add Extraction Label</Button>
             <Button onClick={chooseIsVisible(3)} className={isVisible[3] ? 'ant-btn-none' : 'ant-btn-notChosen'}>Extraction Labels</Button>
-            <Button onClick={chooseIsVisible(4)} className={isVisible[4] ? 'ant-btn-none' : 'ant-btn-notChosen'}>Extraction Labels</Button>
+            <Button onClick={chooseIsVisible(4)} className={isVisible[4] ? 'ant-btn-none' : 'ant-btn-notChosen'}>Labels View</Button>
         </div>
 
         <Row gutter={24}>
@@ -905,7 +905,7 @@ const labelData = () => {
                 </>}
 
                 {isVisible[4] && <>
-                    <Card bordered={false} className="w-full cursor-default grid gap-4 mb-4"  title={"Extraction Labels"} 
+                    <Card bordered={false} className="w-full cursor-default grid gap-4 mb-4"  title={"Labels View"} 
                         extra={<Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(4)}></Button>}
                         style={{maxHeight: '60vh', overflowY: 'auto'}}>  
 
