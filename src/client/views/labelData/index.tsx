@@ -192,9 +192,10 @@ const labelData = () => {
                 ));
                 setProcessLabelOptions(processedNameList);
 
-                // @ 確認是否全選
+                // @ 確認是否要鎖定
                 if (isLockingCheckedAll) {
-                    setProcessLabelCheckedList(processedNameList);
+                    
+                    // setProcessLabelCheckedList(processedNameList);
                 }
                 else {
                     // @ 查看內容有重複欄位顯示在 CheckedList.
@@ -428,7 +429,7 @@ const labelData = () => {
 
         // @ 確認是否全選
         if (isLockingCheckedAll) {
-            setProcessLabelCheckedList(processLabelOptions);
+            // setProcessLabelCheckedList(processLabelOptions);
         }
         else {
             // @ 查看內容有重複欄位顯示在 CheckedList.
@@ -495,7 +496,7 @@ const labelData = () => {
     const handleLockingCheckedAll = (isLocking: boolean) => {
         setIsLockingCheckedAll(!isLockingCheckedAll);
         if (isLocking) { 
-            setProcessLabelCheckedList(processLabelOptions);
+            // setProcessLabelCheckedList(processLabelOptions);
         }
     }
 
@@ -852,7 +853,7 @@ const labelData = () => {
                 {isVisible[1] && <>
                     <Card bordered={false} className="w-full cursor-default grid gap-4 mb-4"  title={"Labels Checked"} 
                         extra={ <div> 
-                                    <Switch className='switch-checkedAll' unCheckedChildren="關閉鎖定全選" checkedChildren="鎖定全選"  onChange={handleLockingCheckedAll} /> 
+                                    <Switch className='switch-checkedAll' unCheckedChildren="關閉鎖定" checkedChildren="鎖定選擇"  onChange={handleLockingCheckedAll} /> 
                                     <Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(1)}></Button>
                                 </div>}>                
 
