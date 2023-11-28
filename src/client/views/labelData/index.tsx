@@ -316,7 +316,8 @@ const labelData = () => {
 
         defaultHttp.post(apiRoutes.addExtractionLabel_all, request)
         .then((response) => {  
-            // fetchProcessedFileContent(currentFileName || "");
+            // setContentList(response.data)
+            fetchProcessedFileContent(currentFileName || "");
         })
         .catch((error) => {
             handleErrorResponse(error);
