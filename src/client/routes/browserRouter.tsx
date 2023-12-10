@@ -18,12 +18,23 @@ const LabelData = loadable(() => import('../views/labelData'), {
 const CompareData = loadable(() => import('../views/compareData'), {
   fallback: fallbackElement,
 });
+const Login = loadable(() => import('../views/login'), {
+  fallback: fallbackElement,
+});
+
+const storedAccount = sessionStorage.getItem('account');
 
 export const browserRouter = createBrowserRouter([
 
-  {
+  { 
     path: webRoutes.home,
     element: <Redirect />,
+    errorElement: errorElement,
+  },
+
+  { 
+    path: webRoutes.login,
+    element: <Login />,
     errorElement: errorElement,
   },
 
@@ -41,8 +52,6 @@ export const browserRouter = createBrowserRouter([
         path: webRoutes.compareData,
         element: <CompareData />,
       },
-      
-      
     ],
   },
 

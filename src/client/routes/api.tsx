@@ -1,8 +1,7 @@
 import { getApiUrl } from '../utils';
 const API_URL = getApiUrl();
 
-export const apiRoutes = {
-
+export const processDataRoutes = {
   fetchUploadsFileName: `${API_URL}/processData/fetchUploadsFileName`,
   uploadTheFile: `${API_URL}/processData/uploadTheFile`,
   fetchFileContentJson: `${API_URL}/processData/fetchFileContentJson`,
@@ -16,3 +15,10 @@ export const apiRoutes = {
   gptRetrieve_all: `${API_URL}/processData/gptRetrieve_all`,
   formatterProcessedContent: `${API_URL}/processData/formatterProcessedContent`,
 };
+
+export const loginRoutes = {
+  checkAccountExist: `${API_URL}/login/checkExist`,
+};
+
+
+

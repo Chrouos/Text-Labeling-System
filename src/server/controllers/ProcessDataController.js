@@ -19,8 +19,20 @@ function now_formatDate() {
 // -------------------- 儲存檔案
 exports.uploadTheFile = async (req, res) => {
     try {
-        const targetDirectory = path.join(__dirname, '..', 'uploads', 'files');
-        const processedDirectory = path.join(__dirname, '..', 'uploads', 'processed');
+        const account = req.headers['stored-account'];
+        let targetDirectory;
+        let processedDirectory;
+
+        // @ 1. check the file name exists.
+        if (account && account !== 'admin') {   
+            // 檢查 account 是否存在，並且不是 admin
+            processedDirectory = path.join(__dirname, '..', 'uploads', 'processed', account);
+            targetDirectory = path.join(__dirname, '..', 'uploads', 'files', account);
+        } else {
+            // 如果 account 不存在或是 admin，則使用預設路徑
+            processedDirectory = path.join(__dirname, '..', 'uploads', 'processed');
+            targetDirectory = path.join(__dirname, '..', 'uploads', 'files');
+        }
 
         // 確認資料夾是否存在
         if (!fs.existsSync(targetDirectory)) { fs.mkdirSync(targetDirectory, { recursive: true }); }
@@ -70,8 +82,20 @@ exports.uploadTheFile = async (req, res) => {
 exports.fetchUploadsFileName = async (req, res) => {
     try {
 
+        const account = req.headers['stored-account'];
+        let targetDirectory;
+
         // @ 1. 讀取資料 ../uploads
-        const targetDirectory = path.join(__dirname, '..', 'uploads', 'files');
+        if (account && account !== 'admin') {   
+            // 檢查 account 是否存在，並且不是 admin
+            targetDirectory = path.join(__dirname, '..', 'uploads', 'files', account);
+        } else {
+            // 如果 account 不存在或是 admin，則使用預設路徑
+            targetDirectory = path.join(__dirname, '..', 'uploads', 'files');
+        }
+
+        // 確認資料夾是否存在
+        if (!fs.existsSync(targetDirectory)) { fs.mkdirSync(targetDirectory, { recursive: true }); }
         const files = fs.readdirSync(targetDirectory); 
 
         // @ 2. 過濾出 .json 檔案
@@ -87,8 +111,19 @@ exports.fetchUploadsFileName = async (req, res) => {
 exports.fetchUploadsProcessedFileName = async (req, res) => {
     try {
 
+        const account = req.headers['stored-account'];
+        let processedDirectory;
+
         // @ 1. 讀取資料 ../uploads/processed
-        const processedDirectory = path.join(__dirname, '..', 'uploads', 'processed');
+        if (account && account !== 'admin') {   
+            // 檢查 account 是否存在，並且不是 admin
+            processedDirectory = path.join(__dirname, '..', 'uploads', 'processed', account);
+        } else {
+            // 如果 account 不存在或是 admin，則使用預設路徑
+            processedDirectory = path.join(__dirname, '..', 'uploads', 'processed');
+        }
+        // 確認資料夾是否存在
+        if (!fs.existsSync(processedDirectory)) { fs.mkdirSync(processedDirectory, { recursive: true }); }
         const files = fs.readdirSync(processedDirectory); 
 
         // @ 2. 過濾出.txt 檔案且名稱符合 req.body.fileName
@@ -113,11 +148,27 @@ exports.fetchUploadsProcessedFileName = async (req, res) => {
 // -------------------- 刪除檔案
 exports.deleteFile = async (req, res) => {
     try {
+        const account = req.headers['stored-account'];
+        let targetDirectory;
+        let processedDirectory;
 
         // @ 1. check the file name exists.
-        const targetDirectory = path.join(__dirname, '..', 'uploads', 'files');
-        const processedDirectory = path.join(__dirname, '..', 'uploads', 'processed');
+        if (account && account !== 'admin') {   
+            // 檢查 account 是否存在，並且不是 admin
+            processedDirectory = path.join(__dirname, '..', 'uploads', 'processed', account);
+            targetDirectory = path.join(__dirname, '..', 'uploads', 'files', account);
+        } else {
+            // 如果 account 不存在或是 admin，則使用預設路徑
+            processedDirectory = path.join(__dirname, '..', 'uploads', 'processed');
+            targetDirectory = path.join(__dirname, '..', 'uploads', 'files');
+        }
+
+        // 確認資料夾是否存在
+        if (!fs.existsSync(targetDirectory)) { fs.mkdirSync(targetDirectory, { recursive: true }); }
+        if (!fs.existsSync(processedDirectory)) { fs.mkdirSync(processedDirectory, { recursive: true }); }
         const files = fs.readdirSync(targetDirectory); 
+
+        
 
         // @ 2. 過濾出.txt 檔案且名稱符合 req.body.fileName
         const targetFile = files.find(file => path.extname(file) === '.txt' && file === req.body.fileName);
@@ -147,9 +198,21 @@ exports.fetchFileContentJson = async (req, res) => {
 
     try {
 
+        const account = req.headers['stored-account'];
+        
         // @ 1. check the file name exists.
-        const targetDirectory = path.join(__dirname, '..', 'uploads', 'files');
+        let targetDirectory;
+        if (account && account !== 'admin') {   
+            // 檢查 account 是否存在，並且不是 admin
+            targetDirectory = path.join(__dirname, '..', 'uploads', 'files', account);
+        } else {
+            // 如果 account 不存在或是 admin，則使用預設路徑
+            targetDirectory = path.join(__dirname, '..', 'uploads', 'files');
+        }
         const files = fs.readdirSync(targetDirectory); 
+
+        // 確認資料夾是否存在
+        if (!fs.existsSync(targetDirectory)) { fs.mkdirSync(targetDirectory, { recursive: true }); }
 
         // @ 2. 過濾出.txt 檔案且名稱符合 req.body.fileName
         const targetFile = files.find(file => path.extname(file) === '.txt' && file === req.body.fileName);
@@ -176,7 +239,17 @@ exports.fetchFileContentJson = async (req, res) => {
 // - 儲存已修改的資料
 exports.uploadProcessedFile = async (req, res) => {
     try {
-        const processedDirectory = path.join(__dirname, '..', 'uploads', 'processed');
+        const account = req.headers['stored-account'];
+        let processedDirectory;
+
+        // @ 1. check the file name exists.
+        if (account && account !== 'admin') {   
+            // 檢查 account 是否存在，並且不是 admin
+            processedDirectory = path.join(__dirname, '..', 'uploads', 'processed', account);
+        } else {
+            // 如果 account 不存在或是 admin，則使用預設路徑
+            processedDirectory = path.join(__dirname, '..', 'uploads', 'processed');
+        }
 
         // @ 確認檔案存在
         if (!fs.existsSync(processedDirectory)) { 
@@ -203,8 +276,22 @@ exports.uploadProcessedFile = async (req, res) => {
 // - 下載檔案
 exports.downloadProcessedFile = async (req, res) => {
     try {
-        const targetDirectory = path.join(__dirname, '..', 'uploads', 'processed');
+        const account = req.headers['stored-account'];
+        let targetDirectory;
+
+        // @ 1. check the file name exists.
+        if (account && account !== 'admin') {   
+            // 檢查 account 是否存在，並且不是 admin
+            targetDirectory = path.join(__dirname, '..', 'uploads', 'files', account);
+        } else {
+            // 如果 account 不存在或是 admin，則使用預設路徑
+            targetDirectory = path.join(__dirname, '..', 'uploads', 'files');
+        }
+
+        // 確認資料夾是否存在
+        if (!fs.existsSync(targetDirectory)) { fs.mkdirSync(targetDirectory, { recursive: true }); }
         const filePath = path.join(targetDirectory, req.body.fileName);
+
 
         // 檢查檔案是否存在
         if (fs.existsSync(filePath)) {
@@ -226,7 +313,17 @@ exports.downloadProcessedFile = async (req, res) => {
 // - 全體增加欄位
 exports.addExtractionLabel_all = async (req, res) => {
     try {
-        const processedDirectory = path.join(__dirname, '..', 'uploads', 'processed');
+        const account = req.headers['stored-account'];
+        let processedDirectory;
+
+        // @ 1. check the file name exists.
+        if (account && account !== 'admin') {   
+            // 檢查 account 是否存在，並且不是 admin
+            processedDirectory = path.join(__dirname, '..', 'uploads', 'processed', account);
+        } else {
+            // 如果 account 不存在或是 admin，則使用預設路徑
+            processedDirectory = path.join(__dirname, '..', 'uploads', 'processed');
+        }
 
         // @ 確認檔案存在
         if (!fs.existsSync(processedDirectory)) { 
@@ -263,7 +360,16 @@ exports.addExtractionLabel_all = async (req, res) => {
 
 exports.removeLabel_all = async (req, res) => {
     try {
-        const processedDirectory = path.join(__dirname, '..', 'uploads', 'processed');
+        let processedDirectory;
+
+        // @ 1. check the file name exists.
+        if (account && account !== 'admin') {   
+            // 檢查 account 是否存在，並且不是 admin
+            processedDirectory = path.join(__dirname, '..', 'uploads', 'processed', account);
+        } else {
+            // 如果 account 不存在或是 admin，則使用預設路徑
+            processedDirectory = path.join(__dirname, '..', 'uploads', 'processed');
+        }
 
         // @ 確認檔案存在
         if (!fs.existsSync(processedDirectory)) {
@@ -472,7 +578,6 @@ exports.gptRetrieve_all = async (req, res) => {
 
             countItem += 1;
             responseData.push(contentItemProcessed_temp);
-            console.log("🚀 ~ file: ProcessDataController.js:475 ~ exports.gptRetrieve_all= ~ contentItemProcessed_temp:", contentItemProcessed_temp)
         }
 
         res.status(200).send(responseData);
@@ -619,7 +724,6 @@ exports.formatterProcessedContent = async (req, res) => {
         const preFormatterMethod = req.body.preFormatterMethod;
 
         var responseData = [];
-
 
         // @ 1. 讀取資料 ../uploads/processed
         const processedDirectory = path.join(__dirname, '..', 'uploads', 'processed');

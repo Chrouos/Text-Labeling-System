@@ -16,7 +16,7 @@ import { UploadOutlined, CheckOutlined, DeleteOutlined, CloseOutlined, DownloadO
 
 import { handleErrorResponse } from '../../utils';
 import { defaultHttp } from '../../utils/http';
-import { apiRoutes } from '../../routes/api';
+import { processDataRoutes } from '../../routes/api';
 import './index.css'
 
 const CheckboxGroup = Checkbox.Group;
@@ -33,7 +33,6 @@ const compareData = () => {
 
 
     // -------------------------------------------------- Fields Settings
-
     // - Global Settings
     const [isLoading, setIsLoading] = useState(false);
     const [isVisible, setIsVisible] = useState<boolean[]>([false, true, true, true, false]);
@@ -83,7 +82,7 @@ const compareData = () => {
 
     // ----- API -> 抓取在 uploads/files 裡面的資料名稱
     const fetchFilesName = async () => {
-        defaultHttp.get(apiRoutes.fetchUploadsFileName, {})
+        defaultHttp.get(processDataRoutes.fetchUploadsFileName, {})
         .then((response) => {
             const newFileNames = response.data.map((fileName: string) => ({ value: fileName, label: fileName }));
             setFilesNameList(newFileNames);
@@ -101,7 +100,7 @@ const compareData = () => {
             fileName: fileName as string,
         }
     
-        defaultHttp.post(apiRoutes.fetchUploadsProcessedFileName, request)
+        defaultHttp.post(processDataRoutes.fetchUploadsProcessedFileName, request)
         .then((response) => {
             setContentList(response.data);
             if (response?.data?.[readTheCurrentPage(currentPage)]?.processed) {
@@ -141,7 +140,7 @@ const compareData = () => {
             preFormatterMethod: currentFormatterMethod as string
         }
     
-        defaultHttp.post(apiRoutes.formatterProcessedContent, request)
+        defaultHttp.post(processDataRoutes.formatterProcessedContent, request)
         .then((response) => {
            
         })

@@ -27,7 +27,7 @@ import Highlighter from "react-highlight-words";
 import { webRoutes } from '../../routes/web';
 import { Link } from 'react-router-dom';
 import { defaultHttp } from '../../utils/http';
-import { apiRoutes } from '../../routes/api';
+import { processDataRoutes } from '../../routes/api';
 import { handleErrorResponse } from '../../utils';
 import './index.css'
 import { FormItemInputContext } from 'antd/es/form/context';
@@ -128,7 +128,7 @@ const labelData = () => {
 
   // ----- API -> 抓取在 uploads/files 裡面的資料名稱
   const fetchFiles = async () => {
-    defaultHttp.get(apiRoutes.fetchUploadsFileName, {})
+    defaultHttp.get(processDataRoutes.fetchUploadsFileName, {})
       .then((response) => {
         const newFileNames = response.data.map((fileName: string) => ({ value: fileName, label: fileName }));
         setFileNameList(newFileNames);
@@ -147,7 +147,7 @@ const labelData = () => {
       fileName: fileName as string,
     }
 
-    defaultHttp.post(apiRoutes.fetchFileContentJson, request)
+    defaultHttp.post(processDataRoutes.fetchFileContentJson, request)
       .then((response) => {
         setFileContentList(response.data);
         // setProcessContentList(response.data)
@@ -175,7 +175,7 @@ const labelData = () => {
       fileName: fileName as string,
     }
 
-    defaultHttp.post(apiRoutes.fetchUploadsProcessedFileName, request)
+    defaultHttp.post(processDataRoutes.fetchUploadsProcessedFileName, request)
       .then((response) => {
         setProcessContentList(response.data);
         if (response?.data?.[currentFileContentPage - 1]?.processed) {
@@ -200,7 +200,7 @@ const labelData = () => {
       content: updatedContentList
     }
 
-    defaultHttp.post(apiRoutes.uploadProcessedFile, request)
+    defaultHttp.post(processDataRoutes.uploadProcessedFile, request)
       .then((response) => {
         fetchProcessedFileContent(currentFileName);
        })
@@ -222,7 +222,7 @@ const labelData = () => {
       newLabel: newLabel
     }
 
-    defaultHttp.post(apiRoutes.addExtractionLabel_all, request)
+    defaultHttp.post(processDataRoutes.addExtractionLabel_all, request)
       .then((response) => { 
         fetchProcessedFileContent(currentFileName);
       })
@@ -243,7 +243,7 @@ const labelData = () => {
       labelToRemove: labelToRemove
     }
 
-    defaultHttp.post(apiRoutes.removeLabel_all, request)
+    defaultHttp.post(processDataRoutes.removeLabel_all, request)
       .then((response) => {
         fetchProcessedFileContent(currentFileName);
        })
@@ -263,7 +263,7 @@ const labelData = () => {
       fileName: currentFileName,
     }
 
-    defaultHttp.post(apiRoutes.downloadProcessedFile, request)
+    defaultHttp.post(processDataRoutes.downloadProcessedFile, request)
       .then((response) => {
 
           // - 假設 response.data 為 binary
@@ -305,7 +305,7 @@ const labelData = () => {
     setIsLoading(true);
     const request = { fileName: currentFileName, }
 
-    defaultHttp.post(apiRoutes.deleteFile, request)
+    defaultHttp.post(processDataRoutes.deleteFile, request)
       .then((response) => { 
         fetchFiles();
         setCurrentFileName("");
@@ -333,7 +333,7 @@ const labelData = () => {
       content: currentFileContentDisplay 
     }
 
-    defaultHttp.post(apiRoutes.gptRetrieve, request)
+    defaultHttp.post(processDataRoutes.gptRetrieve, request)
       .then((response) => {
 
         type respGPTValue = { name: string, gpt_value: string}
@@ -363,7 +363,7 @@ const labelData = () => {
         contentKey: fileContentKey
       }
 
-      defaultHttp.post(apiRoutes.gptRetrieve_all, request)
+      defaultHttp.post(processDataRoutes.gptRetrieve_all, request)
         .then((response) => { 
           type responseList = []
           type responseItem = {name: string, gpt_value: string}
@@ -420,7 +420,7 @@ const labelData = () => {
   
       return isTxt && !isFileNameExisting;
     },
-    action: apiRoutes.uploadTheFile,
+    action: processDataRoutes.uploadTheFile,
     method: 'POST',
 
     onChange(info) {

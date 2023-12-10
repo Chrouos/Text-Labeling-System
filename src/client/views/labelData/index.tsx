@@ -23,9 +23,9 @@ import { UploadOutlined, CheckOutlined, DeleteOutlined, CloseOutlined, DownloadO
 import Highlighter from "react-highlight-words";
 
 import { webRoutes } from '../../routes/web';
-import { Link } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { defaultHttp } from '../../utils/http';
-import { apiRoutes } from '../../routes/api';
+import { processDataRoutes } from '../../routes/api';
 import { handleErrorResponse } from '../../utils';
 import './index.css'
 import { FormItemInputContext } from 'antd/es/form/context';
@@ -34,6 +34,7 @@ import Item from 'antd/es/list/Item';
 import type { CheckboxChangeEvent } from 'antd/es/checkbox';
 import type { CheckboxValueType } from 'antd/es/checkbox/Group';
 import { FieldNamesType } from 'antd/es/cascader';
+import { storedHeaders } from '../../utils/storedHeaders';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -61,6 +62,9 @@ const labelData = () => {
     // - Global Settings
     const [extraction_label_form] = Form.useForm();
     const [messageApi, contextHolder] = message.useMessage();
+    const navigate = useNavigate();
+
+    const storedAccount = sessionStorage.getItem('account');
 
     const [isLoading, setIsLoading] = useState(false);
     const [isVisible, setIsVisible] = useState<boolean[]>([false, true, false, true, false]);
@@ -120,8 +124,6 @@ const labelData = () => {
         return sentences.join("");
     }
     
-    
-    
     const readTheCurrentPage = (page: number) => {
         const fileIndex = (page > 0) ? page - 1 : 0;
         return fileIndex;
@@ -149,7 +151,9 @@ const labelData = () => {
     // ----- API -> 抓取在 uploads/files 裡面的資料名稱
     const fetchFilesName = async () => {
 
-        defaultHttp.get(apiRoutes.fetchUploadsFileName, {})
+        defaultHttp.get(processDataRoutes.fetchUploadsFileName, {
+            headers: storedHeaders()
+        })
         .then((response) => {
             const newFileNames = response.data.map((fileName: string) => ({ value: fileName, label: fileName }));
             setFilesNameList(newFileNames);
@@ -167,7 +171,9 @@ const labelData = () => {
             fileName: fileName as string,
         }
 
-        defaultHttp.post(apiRoutes.fetchUploadsProcessedFileName, request)
+        defaultHttp.post(processDataRoutes.fetchUploadsProcessedFileName, request, {
+            headers: storedHeaders()
+        })
         .then((response) => {
 
             // @ 擷取所有欄位名稱(除了 processed)
@@ -221,7 +227,9 @@ const labelData = () => {
             content: contentList
         }
 
-        defaultHttp.post(apiRoutes.uploadProcessedFile, request)
+        defaultHttp.post(processDataRoutes.uploadProcessedFile, request, {
+            headers: storedHeaders()
+        })
         .then((response) => {
 
 
@@ -241,7 +249,9 @@ const labelData = () => {
             fileName: currentFileName,
         }
 
-        defaultHttp.post(apiRoutes.downloadProcessedFile, request)
+        defaultHttp.post(processDataRoutes.downloadProcessedFile, request, {
+            headers: storedHeaders()
+        })
         .then((response) => {
 
             // @ 假設 response.data 為 binary
@@ -283,7 +293,9 @@ const labelData = () => {
         setIsLoading(true);
         const request = { fileName: currentFileName, }
 
-        defaultHttp.post(apiRoutes.deleteFile, request)
+        defaultHttp.post(processDataRoutes.deleteFile, request, {
+            headers: storedHeaders()
+        })
         .then((response) => { 
 
             fetchFilesName();
@@ -314,7 +326,9 @@ const labelData = () => {
             newLabel: newExtractionLabel
         }
 
-        defaultHttp.post(apiRoutes.addExtractionLabel_all, request)
+        defaultHttp.post(processDataRoutes.addExtractionLabel_all, request, {
+            headers: storedHeaders()
+        })
         .then((response) => {  
             // setContentList(response.data)
             fetchProcessedFileContent(currentFileName || "");
@@ -336,7 +350,9 @@ const labelData = () => {
             labelToRemove: labelToRemove
         }
 
-        defaultHttp.post(apiRoutes.removeLabel_all, request)
+        defaultHttp.post(processDataRoutes.removeLabel_all, request, {
+            headers: storedHeaders()
+        })
         .then((response) => {
         })
         .catch((error) => {
@@ -363,8 +379,9 @@ const labelData = () => {
             return isTxt && !isFileNameExisting;
         },  
         
-        action: apiRoutes.uploadTheFile,
+        action: processDataRoutes.uploadTheFile,
         method: 'POST',
+        headers: storedHeaders(),
 
         onChange(info) {
             if (info.file.status === 'done') {
@@ -544,7 +561,7 @@ const labelData = () => {
           currentFileContentVisual: currentFileContentVisual,
         }
     
-        defaultHttp.post(apiRoutes.gptRetrieve, request)
+        defaultHttp.post(processDataRoutes.gptRetrieve, request)
           .then((response) => {
     
             type respGPTValue = { name: string, gpt_value: string}
@@ -571,7 +588,7 @@ const labelData = () => {
           contentKey: currentContentFieldKey
         }
   
-        defaultHttp.post(apiRoutes.gptRetrieve_all, request)
+        defaultHttp.post(processDataRoutes.gptRetrieve_all, request)
           .then((response) => { 
             type responseList = []
             type responseItem = {name: string, gpt_value: string}
@@ -705,6 +722,13 @@ const labelData = () => {
     useEffect(() => {
         fetchFilesName();
     }, []);
+
+    useEffect(() => {
+        // 如果已經有 storedAccount，則重定向到標籤資料頁面
+        if (storedAccount) {
+            navigate(webRoutes.labelData);
+        }
+    }, [navigate, storedAccount]);
 
     return (
     <Spin spinning={isLoading} tip="Loading...">

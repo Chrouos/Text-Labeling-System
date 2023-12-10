@@ -28,8 +28,10 @@ app.get('/api/config', (req, res) => {
 
 // -------------------- routers list --------------------
 const processDataRouter = require('./routers/ProcessDataRouter')
-app.use(processDataRouter);
+const loginRouter = require('./routers/LoginRouter')
 
+app.use(processDataRouter);
+app.use(loginRouter);
 
 // -------------------- vite listen --------------------
 ViteExpress.listen(app, 4567, () => {

@@ -1,13 +1,12 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { webRoutes } from '../../routes/web';
-import { Dropdown } from 'antd';
+import { Dropdown, Menu } from 'antd';
 import { ProLayout, ProLayoutProps } from '@ant-design/pro-components';
 import Icon, { LogoutOutlined } from '@ant-design/icons';
 import { useDispatch } from 'react-redux';
 // import { logout } from '../../store/slices/adminSlice';
 import { memo } from 'react';
 import { sidebar } from './sidebar';
-import { apiRoutes } from '../../routes/api';
 // import http from '../../utils/http';
 // import { handleErrorResponse } from '../../utils';
 import { RiShieldUserFill } from 'react-icons/ri';
@@ -26,17 +25,32 @@ const Layout = () => {
     route: {
       routes: sidebar,
     },
+    rightContentRender: () => (
+      <Menu mode="horizontal">
+        <Menu.Item key="logout" onClick={handleLogout}>
+          <LogoutOutlined />
+          登出
+        </Menu.Item>
+      </Menu>
+    ),
   };
+
+  const handleLogout = () => {
+    // 登出邏輯...
+    sessionStorage.clear(); // 例如清除 sessionStorage
+    navigate(webRoutes.login); // 重定向到登入頁面
+  };
+
 
   return (
     <div className="h-screen">
       <ProLayout {...defaultProps} 
         location={location} 
-        onMenuHeaderClick={() => navigate(webRoutes.labelData)}
+        onMenuHeaderClick={() => navigate(webRoutes.home)}
         token={{sider: {colorMenuBackground: 'white'},}}
 
         menuItemRender={(item, dom) => (
-          <a
+          <a 
             onClick={(e) => {
               e.preventDefault();
               item.path && navigate(item.path);
