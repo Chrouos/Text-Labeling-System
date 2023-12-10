@@ -9,3 +9,4 @@ src/server/uploads/files/
 .DS_Store
 
 .vscode/
+src/client/utils/index.tsx
