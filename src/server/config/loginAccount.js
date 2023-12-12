@@ -5,8 +5,8 @@ module.exports = [
         password: '1234',
     },
     {
-        account: 'user1',
-        password: '1111',
+        account: 'Yo',
+        password: 'Yo123',
     },
     {
         account: 'user2',

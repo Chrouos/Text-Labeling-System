@@ -198,18 +198,17 @@ const labelData = () => {
                 ));
                 setProcessLabelOptions(processedNameList);
 
-                // @ 確認是否要鎖定
-                if (isLockingCheckedAll) {
-                    
-                    // setProcessLabelCheckedList(processedNameList);
-                }
-                else {
-                    // @ 查看內容有重複欄位顯示在 CheckedList.
-                    const filteredList = processedNameList.filter((item:string[]) => {
-                        return response.data[0][formattedKeys[0].value].includes(item);
-                    });
-                    setProcessLabelCheckedList(filteredList);
-                }
+                // // @ 確認是否要鎖定
+                // if (isLockingCheckedAll) {
+                //     // setProcessLabelCheckedList(processedNameList);
+                // }
+                // else {
+                //     // @ 查看內容有重複欄位顯示在 CheckedList.
+                //     const filteredList = processedNameList.filter((item:string[]) => {
+                //         return response.data[0][formattedKeys[0].value].includes(item);
+                //     });
+                //     setProcessLabelCheckedList(filteredList);
+                // }
                 setNewExtractionLabel("");
             }
         })
@@ -299,9 +298,7 @@ const labelData = () => {
         .then((response) => { 
 
             fetchFilesName();
-            setCurrentFileName("");
-            setCurrentFileContentVisual("");
-            setCurrentProcessedFields([]);
+            cleanTheField();
 
             messageApi.success("刪除成功");
             
@@ -349,10 +346,7 @@ const labelData = () => {
             content:contentList,
             labelToRemove: labelToRemove
         }
-
-        defaultHttp.post(processDataRoutes.removeLabel_all, request, {
-            headers: storedHeaders()
-        })
+        defaultHttp.post(processDataRoutes.removeLabel_all, request, { headers: storedHeaders() })
         .then((response) => {
         })
         .catch((error) => {
@@ -452,7 +446,7 @@ const labelData = () => {
         else {
             // @ 查看內容有重複欄位顯示在 CheckedList.
             const filteredList = processLabelOptions.filter((item:string) => {
-                return currentFileContentVisual.includes(item);
+                return contentList[indexPage][currentContentFieldKey].includes(item);
             });
             setProcessLabelCheckedList(filteredList);
         }
@@ -480,7 +474,7 @@ const labelData = () => {
         const allLabelOptions = [...processLabelOptions, newExtractionLabel]
         setProcessLabelOptions(allLabelOptions);
         
-        if (currentFileContentVisual.includes(newExtractionLabel)){
+        if (!isLockingCheckedAll){
             setProcessLabelCheckedList([...processLabelCheckedList, newExtractionLabel])
         }
 
@@ -516,6 +510,21 @@ const labelData = () => {
         if (isLocking) { 
             // setProcessLabelCheckedList(processLabelOptions);
         }
+    }
+
+    // ----- handle -> 刪除檔案
+    const handleDeleteFile = async () => {
+        await deleteFile();
+        closeModal(); 
+    }
+
+    // ----- handle -> 清楚資料
+    const cleanTheField = () => {
+        setCurrentFileName("");
+        setCurrentFileContentVisual("");
+        setCurrentProcessedFields([]);
+        setCurrentContentFieldKey("");
+        setCurrentSelectedLabel("");
     }
 
     // ----- handle -> 對要擷取內容 HighLight, 並修改相關資訊，送到 Fields Input 中
@@ -651,10 +660,10 @@ const labelData = () => {
         const handleDelete = (indexToDelete: number, labelName:string) => {
             setIsLoading(true)
 
+            
             if (currentSelectedLabel === labelName) {
-                
+                console.log(currentSelectedLabel, labelName)
                 setCurrentSelectedLabel("");
-                console.log(currentSelectedLabel)
             }
 
             const updatedProcessedFields = currentProcessedFields.filter((_, index) => index !== indexToDelete);
@@ -707,7 +716,13 @@ const labelData = () => {
                                         value={originalField.value}
                                         onChange={(e) => handleUpdate(originalIndex, originalField.name, e.target.value)}  />
 
-                                    <Button className='ant-btn-icon' onClick={() => {handleDelete(originalIndex, originalField.name)}}><DeleteOutlined /></Button>
+                                    <Button 
+                                        className='ant-btn-icon' 
+                                        onClick={(e) => {
+                                            e.stopPropagation(); // 阻止事件繼續傳播
+                                            handleDelete(originalIndex, originalField.name); }}>
+                                        <DeleteOutlined />
+                                    </Button>
                                 </div>
                             </Form.Item>
                         </div>
@@ -834,8 +849,8 @@ const labelData = () => {
                                     title: "刪除",
                                     ok: {
                                     onClick: async () => {
-                                        await deleteFile();
-                                        closeModal();
+                                        handleDeleteFile();
+                                        
                                     }
                                     },
                                     icon: <DeleteOutlined />,
@@ -903,7 +918,7 @@ const labelData = () => {
                         extra={<Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(2)}></Button>}>  
                             <div className='grid grid-cols-2 gap-4'>
                                 <Input value={newExtractionLabel} onChange={(e) => {setNewExtractionLabel(e.target.value)}} addonBefore="new Label"/>
-                                <Button type="dashed" onClick={() => addExtractionLabel()} > 
+                                <Button type="dashed" onClick={() => addExtractionLabel()} disabled={!currentFileName} > 
                                     + Add Item 
                                 </Button>
                             </div>

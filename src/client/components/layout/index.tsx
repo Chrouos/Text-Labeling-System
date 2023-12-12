@@ -26,11 +26,18 @@ const Layout = () => {
       routes: sidebar,
     },
     rightContentRender: () => (
-      <Menu mode="horizontal">
-        <Menu.Item key="logout" onClick={handleLogout}>
-          <LogoutOutlined />
-          登出
-        </Menu.Item>
+      <Menu mode="horizontal" items={[
+        {
+          key: 'logout',
+          label: (
+            <>
+              <LogoutOutlined />
+              登出
+            </>
+          ),
+          onClick: handleLogout,
+        },
+      ]}>
       </Menu>
     ),
   };

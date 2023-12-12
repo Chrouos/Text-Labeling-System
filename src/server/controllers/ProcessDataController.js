@@ -360,6 +360,7 @@ exports.addExtractionLabel_all = async (req, res) => {
 
 exports.removeLabel_all = async (req, res) => {
     try {
+        const account = req.headers['stored-account'];
         let processedDirectory;
 
         // @ 1. check the file name exists.
