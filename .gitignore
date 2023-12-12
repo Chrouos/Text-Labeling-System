@@ -10,3 +10,4 @@ src/server/uploads/files/
 
 .vscode/
 src/client/utils/index.tsx
+src/client/utils/index.tsx
