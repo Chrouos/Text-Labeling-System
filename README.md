@@ -9,6 +9,12 @@ yarn dev
 + 可以增加想要標記的欄位
 + 前後文擷取
 
+### 如果使用 Docker
+```
+chomd +x run.sh # 先把 run.sh 轉成可以啟動的模式
+./run.sh
+```
+
 
 ![image](https://github.com/Chrouos/Text-Labeling-System/assets/56072039/98c837de-449d-4a88-86e7-1342a5ad8f41)
 
