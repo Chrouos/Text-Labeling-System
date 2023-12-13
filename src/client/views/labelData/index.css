@@ -140,3 +140,11 @@
 .ant-switch.switch-checkedAll.ant-switch-checked {
     background: #258d2c !important;
 }
+
+
+.ant-card-head {
+    position: sticky;
+    top: 0; /* 或您想要固定的位置 */
+    background-color: rgba(255, 255, 255, 0.8) !important;
+    z-index: 100; /* 確保在頂層 */
+}
