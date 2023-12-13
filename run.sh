@@ -5,5 +5,5 @@ docker build -t text-labeling:latest .
 docker rm -f text-labeling || true
 
 # 運行新的 container
-# docker run -d -p 4567:4567 --name text-labeling text-labeling
-docker run -d -p 4567:4567 -p 24678:24678 --name text-labeling text-labeling
+# docker run -d -p 4567:4567 -p 24678:24678 --name text-labeling text-labeling
+docker run -d -p 4567:4567 -p 24678:24678 -v $(pwd):/usr/src/app --name text-labeling text-labeling

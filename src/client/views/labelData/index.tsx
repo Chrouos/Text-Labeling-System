@@ -848,10 +848,7 @@ const labelData = () => {
                                     isOpen: true,
                                     title: "刪除",
                                     ok: {
-                                    onClick: async () => {
-                                        handleDeleteFile();
-                                        
-                                    }
+                                        onClick: async () => { handleDeleteFile(); }
                                     },
                                     icon: <DeleteOutlined />,
                                     confirmLoading: false,
@@ -928,7 +925,7 @@ const labelData = () => {
                 {isVisible[3] && <>
                     <Card bordered={false} className="w-full cursor-default grid gap-4 mb-4"  title={"Extraction Labels"} 
                         extra={ <div style={{display: 'flex', alignItems: 'center'}}> 
-                                    <p className='p-current-dele' onClick={()=>{setCurrentSelectedLabel("")}}>{currentSelectedLabel}</p> 
+                                    <p>選取：</p> <p className='p-current-dele' onClick={()=>{setCurrentSelectedLabel("")}}>{currentSelectedLabel}</p> 
                                     <Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(3)}></Button> 
                                 </div> } 
                         style={{maxHeight: '60vh', overflowY: 'auto'}}>  

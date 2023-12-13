@@ -109,17 +109,21 @@
     font-size: 1.2rem;
     cursor: pointer;
     overflow: visible;  
-    text-overflow: clip; 
-
+    text-overflow: clip;
+    padding: 0px 5px; 
+    
     transition: 0.4s;
 }
 
 .p-current-dele {
     border: 1px solid #00000024;
-    padding: 5%;
+    padding: 0% 5%;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    margin-right: 30px;
+    min-width: 50px;
+    /* text-align: center; */
     
     transition: 0.4s;
 }
