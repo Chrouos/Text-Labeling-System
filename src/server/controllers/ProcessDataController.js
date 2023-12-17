@@ -84,10 +84,12 @@ exports.fetchUploadsFileName = async (req, res) => {
 
         const account = req.headers['stored-account'];
         let targetDirectory;
+        let processedDirectory;
 
         // @ 1. 讀取資料 ../uploads
         if (account && account !== 'admin') {   
             // 檢查 account 是否存在，並且不是 admin
+            processedDirectory = path.join(__dirname, '..', 'uploads', 'processed', account);
             targetDirectory = path.join(__dirname, '..', 'uploads', 'files', account);
         } else {
             // 如果 account 不存在或是 admin，則使用預設路徑
@@ -96,6 +98,7 @@ exports.fetchUploadsFileName = async (req, res) => {
 
         // 確認資料夾是否存在
         if (!fs.existsSync(targetDirectory)) { fs.mkdirSync(targetDirectory, { recursive: true }); }
+        if (!fs.existsSync(processedDirectory)) { fs.mkdirSync(processedDirectory, { recursive: true }); }
         const files = fs.readdirSync(targetDirectory); 
 
         // @ 2. 過濾出 .json 檔案
