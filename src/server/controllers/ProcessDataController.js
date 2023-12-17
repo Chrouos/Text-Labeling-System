@@ -28,15 +28,15 @@ exports.uploadTheFile = async (req, res) => {
             // 檢查 account 是否存在，並且不是 admin
             processedDirectory = path.join(__dirname, '..', 'uploads', 'processed', account);
             targetDirectory = path.join(__dirname, '..', 'uploads', 'files', account);
+
+             // 確認資料夾是否存在
+            if (!fs.existsSync(targetDirectory)) { fs.mkdirSync(targetDirectory, { recursive: true }); }
+            if (!fs.existsSync(processedDirectory)) { fs.mkdirSync(processedDirectory, { recursive: true }); }
         } else {
             // 如果 account 不存在或是 admin，則使用預設路徑
             processedDirectory = path.join(__dirname, '..', 'uploads', 'processed');
             targetDirectory = path.join(__dirname, '..', 'uploads', 'files');
         }
-
-        // 確認資料夾是否存在
-        if (!fs.existsSync(targetDirectory)) { fs.mkdirSync(targetDirectory, { recursive: true }); }
-        if (!fs.existsSync(processedDirectory)) { fs.mkdirSync(processedDirectory, { recursive: true }); }
 
         const storage = multer.diskStorage({
             destination: function(req, file, cb) {
@@ -91,14 +91,16 @@ exports.fetchUploadsFileName = async (req, res) => {
             // 檢查 account 是否存在，並且不是 admin
             processedDirectory = path.join(__dirname, '..', 'uploads', 'processed', account);
             targetDirectory = path.join(__dirname, '..', 'uploads', 'files', account);
+
+            // 確認資料夾是否存在
+            if (!fs.existsSync(targetDirectory)) { fs.mkdirSync(targetDirectory, { recursive: true }); }
+            if (!fs.existsSync(processedDirectory)) { fs.mkdirSync(processedDirectory, { recursive: true }); }
         } else {
             // 如果 account 不存在或是 admin，則使用預設路徑
             targetDirectory = path.join(__dirname, '..', 'uploads', 'files');
         }
 
-        // 確認資料夾是否存在
-        if (!fs.existsSync(targetDirectory)) { fs.mkdirSync(targetDirectory, { recursive: true }); }
-        if (!fs.existsSync(processedDirectory)) { fs.mkdirSync(processedDirectory, { recursive: true }); }
+        
         const files = fs.readdirSync(targetDirectory); 
 
         // @ 2. 過濾出 .json 檔案
@@ -121,12 +123,14 @@ exports.fetchUploadsProcessedFileName = async (req, res) => {
         if (account && account !== 'admin') {   
             // 檢查 account 是否存在，並且不是 admin
             processedDirectory = path.join(__dirname, '..', 'uploads', 'processed', account);
+
+            // 確認資料夾是否存在
+            if (!fs.existsSync(processedDirectory)) { fs.mkdirSync(processedDirectory, { recursive: true }); }
         } else {
             // 如果 account 不存在或是 admin，則使用預設路徑
             processedDirectory = path.join(__dirname, '..', 'uploads', 'processed');
         }
-        // 確認資料夾是否存在
-        if (!fs.existsSync(processedDirectory)) { fs.mkdirSync(processedDirectory, { recursive: true }); }
+        
         const files = fs.readdirSync(processedDirectory); 
 
         // @ 2. 過濾出.txt 檔案且名稱符合 req.body.fileName
@@ -160,15 +164,17 @@ exports.deleteFile = async (req, res) => {
             // 檢查 account 是否存在，並且不是 admin
             processedDirectory = path.join(__dirname, '..', 'uploads', 'processed', account);
             targetDirectory = path.join(__dirname, '..', 'uploads', 'files', account);
+
+            // 確認資料夾是否存在
+            if (!fs.existsSync(targetDirectory)) { fs.mkdirSync(targetDirectory, { recursive: true }); }
+            if (!fs.existsSync(processedDirectory)) { fs.mkdirSync(processedDirectory, { recursive: true }); }
         } else {
             // 如果 account 不存在或是 admin，則使用預設路徑
             processedDirectory = path.join(__dirname, '..', 'uploads', 'processed');
             targetDirectory = path.join(__dirname, '..', 'uploads', 'files');
         }
 
-        // 確認資料夾是否存在
-        if (!fs.existsSync(targetDirectory)) { fs.mkdirSync(targetDirectory, { recursive: true }); }
-        if (!fs.existsSync(processedDirectory)) { fs.mkdirSync(processedDirectory, { recursive: true }); }
+        
         const files = fs.readdirSync(targetDirectory); 
 
         
@@ -208,14 +214,15 @@ exports.fetchFileContentJson = async (req, res) => {
         if (account && account !== 'admin') {   
             // 檢查 account 是否存在，並且不是 admin
             targetDirectory = path.join(__dirname, '..', 'uploads', 'files', account);
+            // 確認資料夾是否存在
+            if (!fs.existsSync(targetDirectory)) { fs.mkdirSync(targetDirectory, { recursive: true }); }
         } else {
             // 如果 account 不存在或是 admin，則使用預設路徑
             targetDirectory = path.join(__dirname, '..', 'uploads', 'files');
         }
         const files = fs.readdirSync(targetDirectory); 
 
-        // 確認資料夾是否存在
-        if (!fs.existsSync(targetDirectory)) { fs.mkdirSync(targetDirectory, { recursive: true }); }
+        
 
         // @ 2. 過濾出.txt 檔案且名稱符合 req.body.fileName
         const targetFile = files.find(file => path.extname(file) === '.txt' && file === req.body.fileName);
@@ -249,15 +256,17 @@ exports.uploadProcessedFile = async (req, res) => {
         if (account && account !== 'admin') {   
             // 檢查 account 是否存在，並且不是 admin
             processedDirectory = path.join(__dirname, '..', 'uploads', 'processed', account);
+
+            // @ 確認檔案存在
+            if (!fs.existsSync(processedDirectory)) { 
+                fs.mkdirSync(processedDirectory, { recursive: true }); 
+            }
         } else {
             // 如果 account 不存在或是 admin，則使用預設路徑
             processedDirectory = path.join(__dirname, '..', 'uploads', 'processed');
         }
 
-        // @ 確認檔案存在
-        if (!fs.existsSync(processedDirectory)) { 
-            fs.mkdirSync(processedDirectory, { recursive: true }); 
-        }
+        
 
         // @ 轉換格式
         const contentData = req.body.content; 
@@ -286,13 +295,15 @@ exports.downloadProcessedFile = async (req, res) => {
         if (account && account !== 'admin') {   
             // 檢查 account 是否存在，並且不是 admin
             targetDirectory = path.join(__dirname, '..', 'uploads', 'files', account);
+
+            // 確認資料夾是否存在
+            if (!fs.existsSync(targetDirectory)) { fs.mkdirSync(targetDirectory, { recursive: true }); }
         } else {
             // 如果 account 不存在或是 admin，則使用預設路徑
             targetDirectory = path.join(__dirname, '..', 'uploads', 'files');
         }
 
-        // 確認資料夾是否存在
-        if (!fs.existsSync(targetDirectory)) { fs.mkdirSync(targetDirectory, { recursive: true }); }
+        
         const filePath = path.join(targetDirectory, req.body.fileName);
 
 
@@ -323,15 +334,16 @@ exports.addExtractionLabel_all = async (req, res) => {
         if (account && account !== 'admin') {   
             // 檢查 account 是否存在，並且不是 admin
             processedDirectory = path.join(__dirname, '..', 'uploads', 'processed', account);
+            // @ 確認檔案存在
+            if (!fs.existsSync(processedDirectory)) { 
+                fs.mkdirSync(processedDirectory, { recursive: true }); 
+            }
         } else {
             // 如果 account 不存在或是 admin，則使用預設路徑
             processedDirectory = path.join(__dirname, '..', 'uploads', 'processed');
         }
 
-        // @ 確認檔案存在
-        if (!fs.existsSync(processedDirectory)) { 
-            fs.mkdirSync(processedDirectory, { recursive: true }); 
-        }
+        
 
         // @ 轉換格式
         const contentData = req.body.content; 
@@ -370,15 +382,16 @@ exports.removeLabel_all = async (req, res) => {
         if (account && account !== 'admin') {   
             // 檢查 account 是否存在，並且不是 admin
             processedDirectory = path.join(__dirname, '..', 'uploads', 'processed', account);
+            // @ 確認檔案存在
+            if (!fs.existsSync(processedDirectory)) {
+                fs.mkdirSync(processedDirectory, { recursive: true });
+            }
         } else {
             // 如果 account 不存在或是 admin，則使用預設路徑
             processedDirectory = path.join(__dirname, '..', 'uploads', 'processed');
         }
 
-        // @ 確認檔案存在
-        if (!fs.existsSync(processedDirectory)) {
-            fs.mkdirSync(processedDirectory, { recursive: true });
-        }
+
 
         // @ 轉換格式
         const contentData = req.body.content;
