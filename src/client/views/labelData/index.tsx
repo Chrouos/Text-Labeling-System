@@ -493,8 +493,25 @@ const labelData = () => {
         setProcessLabelCheckedList(e.target.checked ? processLabelOptions : []);
     };
     // ----- handle -> 若修改了 Processed Label
-    const handleChange = (list: CheckboxValueType[]) => {
+    const handleChangeCheckbox = (list: CheckboxValueType[]) => {
+
+
         if (!isLockingCheckedAll) {
+            
+            const addedItems:string = String(list.filter(item => !processLabelCheckedList.includes(item))[0] || ""); // = 找出新增的項目
+            const removedItems = processLabelCheckedList.filter(item => !list.includes(item))[0]; // = 找出移除的項目
+
+            setTimeout(() => {
+                const anchorElement = document.getElementById(`anchor-${addedItems}`);
+                const cardElement = document.getElementById('extraction-labels-card'); // 或者使用其他選擇器獲取 Card 元素
+
+                if (anchorElement && cardElement) {
+                    anchorElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                }
+
+            }, 0);
+
+            setCurrentSelectedLabel(addedItems)
             setProcessLabelCheckedList(list);
         }
     };
@@ -708,7 +725,7 @@ const labelData = () => {
             {currentProcessedFields.map((originalField: ProcessedFieldsType, originalIndex: number) => {
                 if (processLabelCheckedList.includes(originalField.name)) {
                     return (
-                        <div key={originalIndex} style={{display: 'flex', alignItems: 'center'}}>
+                        <div key={originalIndex} id={`anchor-${originalField.name}`} style={{display: 'flex', alignItems: 'center'}}>
                             <Form.Item label={<span  style={{  color: originalField.name === currentSelectedLabel ? 'red' : 'black'  }}>{originalField.name}</span>}>
                                 <div className='grid grid-cols-12 gap-4' style={{alignItems: 'center'}} onClick={() => {handleChoose(originalField.name)}}>
                                     <TextArea 
@@ -905,7 +922,7 @@ const labelData = () => {
 
                         <CheckboxGroup 
                             options={processLabelOptions} 
-                            value={processLabelCheckedList} onChange={handleChange} />
+                            value={processLabelCheckedList} onChange={handleChangeCheckbox} />
 
                     </Card>
                 </>}
@@ -923,7 +940,8 @@ const labelData = () => {
                 </>}
 
                 {isVisible[3] && <>
-                    <Card bordered={false} className="w-full cursor-default grid gap-4 mb-4"  title={"Extraction Labels"} 
+                    <Card id={'extraction-labels-card'} bordered={false} className="w-full cursor-default grid gap-4 mb-4"  title={"Extraction Labels"}
+                     
                         extra={ <div style={{display: 'flex', alignItems: 'center'}}> 
                                     <p>選取：</p> <p className='p-current-dele' onClick={()=>{setCurrentSelectedLabel("")}}>{currentSelectedLabel}</p> 
                                     <Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(3)}></Button> 
