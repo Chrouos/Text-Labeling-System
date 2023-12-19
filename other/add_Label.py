@@ -1,10 +1,12 @@
 import json
 import os
 
-user = 'Y_Laber_1'
-files_folder = './src/server/uploads/files/' + user
+user = 'test'
+# files_folder = './src/server/uploads/files/' + user 
+files_folder = './other/change_file'
 process_folder = './src/server/uploads/processed/' + user
 
+label = 'opinion'
 
 # 創建一個字典來存儲第二個文件夾的數據
 judgements = {}
@@ -16,7 +18,7 @@ for filename in os.listdir(files_folder):
             for line in file:
                 data = json.loads(line)
                 clean_judgement = data.get('cleanJudgement')
-                judgement = data.get('judgement')
+                judgement = data.get(label)
                 if clean_judgement and judgement:
                     judgements[clean_judgement] = judgement
 
@@ -30,7 +32,7 @@ for filename in os.listdir(process_folder):
                 data = json.loads(line)
                 clean_judgement = data.get('cleanJudgement')
                 if clean_judgement and clean_judgement in judgements:
-                    data['judgement'] = judgements[clean_judgement]
+                    data[label] = judgements[clean_judgement]
                 updated_lines.append(json.dumps(data, ensure_ascii=False))
 
         # 寫回更新後的內容
