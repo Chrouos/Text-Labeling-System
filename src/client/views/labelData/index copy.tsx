@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import BasePageContainer from '../../components/layout/PageContainer';
 import {
-  BreadcrumbProps,
   Card,
   Col,
   Row,
@@ -11,21 +10,20 @@ import {
   Button,
   Form,
   Typography,
-  Radio,
   Pagination,
-  Progress,
   Modal,
   Spin,
-  Checkbox
+  Checkbox, Divider,
+  Switch, Space, InputNumber
 } from 'antd';
 import { message } from 'antd';
 import type { UploadProps } from 'antd';
 import type { UploadFile } from 'antd/es/upload/interface';
-import { UploadOutlined, CheckOutlined, DeleteOutlined, CloseOutlined, DownloadOutlined, DownOutlined, UpOutlined, ClearOutlined} from '@ant-design/icons';
+import { UploadOutlined, CheckOutlined, DeleteOutlined, CloseOutlined, DownloadOutlined, DownOutlined, UpOutlined, ClearOutlined, MonitorOutlined} from '@ant-design/icons';
 import Highlighter from "react-highlight-words";
 
 import { webRoutes } from '../../routes/web';
-import { Link } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { defaultHttp } from '../../utils/http';
 import { processDataRoutes } from '../../routes/api';
 import { handleErrorResponse } from '../../utils';
@@ -34,862 +32,1053 @@ import { FormItemInputContext } from 'antd/es/form/context';
 import { current } from '@reduxjs/toolkit';
 import Item from 'antd/es/list/Item';
 import type { CheckboxChangeEvent } from 'antd/es/checkbox';
+import type { CheckboxValueType } from 'antd/es/checkbox/Group';
+import { FieldNamesType } from 'antd/es/cascader';
+import { storedHeaders } from '../../utils/storedHeaders';
 
 const { TextArea } = Input;
 const { Option } = Select;
+const CheckboxGroup = Checkbox.Group;
 
-// - 定義型態
-type FileNameItem = { value: string; label: string; };
-type FieldsNameItem = { name: string; value: string; the_surrounding_words: string; regular_expression_match: string, regular_expression_formula: string, gpt_value: string };
-type ProcessedContent = { fileName:string, content: string; processed?: FieldsNameItem[]; };
-type ModalFormatter = {
-  isOpen: boolean;
-  title: string;
-  ok: { onClick: (e?: React.MouseEvent<HTMLButtonElement>) => void; };
-  cancel: { onClick: (e?: React.MouseEvent<HTMLButtonElement>) => void; };
-  icon: JSX.Element;
-  confirmLoading: boolean;
-  message: string;
+// - 定義類型
+type SelectType = { value: string; label: string; };
+type ProcessedContentType = { processed?: ProcessedFieldsType[]; [key: string]: any; };
+type ProcessedFieldsType = { name: string; value: string; the_surrounding_words: string; regular_expression_match: string, regular_expression_formula: string, gpt_value: string }; // connecting change: exampleProcessedFields
+
+type ModalFormatterType = {
+    isOpen: boolean;
+    title: string;
+    ok: { onClick: (e?: React.MouseEvent<HTMLButtonElement>) => void; };
+    cancel: { onClick: (e?: React.MouseEvent<HTMLButtonElement>) => void; };
+    icon: JSX.Element;
+    confirmLoading: boolean;
+    message: string;
 };
-
-
-// - 頁面順序
-const breadcrumb: BreadcrumbProps = {
-  items: [
-    {
-      key: webRoutes.labelData,
-      title: <Link to={webRoutes.labelData}>標記資料</Link>,
-    },
-  ],
-};
-
 
 const labelData = () => {
 
-  // -------------------------------------------------- Fields Setting 
-
-  const [addLabelForm] = Form.useForm();
-  const [messageApi, contextHolder] = message.useMessage();
-
-  // @ loading to stop user action.
-  const [isLoading, setIsLoading] = useState(false);
-
-  // @ Regular Expression Loading Progress
-  const [actionLoading_RE, setActionLoading_RE] = useState(false);
-  const [actionLoading_Progress, setActionLoading_Progress] = useState(0);
-
-  const [fileNameList, setFileNameList] = useState<FileNameItem[]>([]);
-  const [currentFileName, setCurrentFileName] = useState<string>("");
-
-  const [fileContentFields, setFileContentFields] = useState<string[]>([]); // = 目前檔案的 所有欄位名稱
-  const [fileContentKey, setFileContentKey] = useState<string>(""); // = 目前選擇的欄位
-  const [fileContentList, setFileContentList] = useState([]); // = 原始檔案內容
-  const [processContentList, setProcessContentList] = useState<ProcessedContent[]>([]); // = 擷取後的檔案
-  
-  const [currentFileContentPage, setCurrentFileContentPage] = useState(1);
-  const [currentFileContentJson, setCurrentFileContentJson] = useState<Record<string, any>>({});
-  const [currentFileContentDisplay, setCurrentFileContentDisplay] = useState<string>("");
-
-  const [newLabel, setNewLabel] = useState<string>("") // = 新增的欄位名稱.
-  const [labelFields, setLabelFields] = useState<FieldsNameItem[]>([]); // = 已新增的欄位 Fields.
-  const [currentSelectedNewLabel, setCurrentSelectedNewLabel] = useState<string>(""); // = 選擇的新欄位
-
-  const [REFormula, setReFormula] = useState<string>("");
-
-  const [isVisible, setIsVisible] = useState<boolean[]>([true, true, true, false, false]);
-  const chooseIsVisible = (index: number) => {
-    return (event: React.MouseEvent<HTMLElement>) => {
-      const newIsVisible = [...isVisible];
-      newIsVisible[index] = !newIsVisible[index];
-      setIsVisible(newIsVisible);
-    };
-  }
-
-  const [modal, modalContextHolder] = Modal.useModal();
-  const [modalSetting, setModalSetting] = useState<ModalFormatter>({
-    isOpen: false, 
-    title: "Titles", 
-    ok: {
-      onClick: () => {console.log("OK!")}
-    }, 
-    cancel: {
-      onClick: () => closeModal()
-    }, 
-    icon: <CheckOutlined />, 
-    confirmLoading: false, 
-    message: "This is the default modal setting."
-  });
-  const closeModal = () => {
-    setModalSetting((prevState: ModalFormatter) => ({...prevState, isOpen: false}))
-  }
-  
-
-  // -------------------------------------------------- API
-
-  // ----- API -> 抓取在 uploads/files 裡面的資料名稱
-  const fetchFiles = async () => {
-    defaultHttp.get(processDataRoutes.fetchUploadsFileName, {})
-      .then((response) => {
-        const newFileNames = response.data.map((fileName: string) => ({ value: fileName, label: fileName }));
-        setFileNameList(newFileNames);
-      })
-      .catch((error) => {
-        handleErrorResponse(error);
-      }).finally(() => {});
-  }
-  
-  // ----- API -> 抓取指定 fileName 的內容 -> Json
-  const fetchFileContent = async (fileName: string) => {
-
-    setIsLoading(true);
-    
-    const request = {
-      fileName: fileName as string,
-    }
-
-    defaultHttp.post(processDataRoutes.fetchFileContentJson, request)
-      .then((response) => {
-        setFileContentList(response.data);
-        // setProcessContentList(response.data)
-
-        const keysWithoutProcessed = Object.keys(response.data[0]).filter(key => key !== 'processed');
-        setFileContentFields(keysWithoutProcessed);
-        setFileContentKey(fileContentFields[0])
-
-        setCurrentFileContentJson(response.data[0]); // = 目前檔案內容
-        setCurrentFileContentPage(1); 
-
-      })
-      .catch((error) => {
-        handleErrorResponse(error);
-      }).finally(() => {
-        setIsLoading(false); // 加載完成
-      });
-  }
-
-  const fetchProcessedFileContent = async (fileName: string) => {
-
-    setIsLoading(true); 
-    
-    const request = {
-      fileName: fileName as string,
-    }
-
-    defaultHttp.post(processDataRoutes.fetchUploadsProcessedFileName, request)
-      .then((response) => {
-        setProcessContentList(response.data);
-        if (response?.data?.[currentFileContentPage - 1]?.processed) {
-          setLabelFields(response.data[currentFileContentPage - 1].processed);
-        }
-      })
-      .catch((error) => {
-        handleErrorResponse(error);
-      }).finally(() => { setIsLoading(false); });
-  }
-
-
-
-  // ----- API -> 上傳擷取檔案
-  const uploadProcessedFile = async () => {
-
-    setIsLoading(true);
-    const updatedContentList = updateContentListByLabelFields()
-
-    const request = {
-      fileName: currentFileName,
-      content: updatedContentList
-    }
-
-    defaultHttp.post(processDataRoutes.uploadProcessedFile, request)
-      .then((response) => {
-        fetchProcessedFileContent(currentFileName);
-       })
-      .catch((error) => {
-        handleErrorResponse(error);
-      }).finally(() => {
-        setIsLoading(false);
-      });
-  }
-
-  // ----- API -> 增加欄位
-  const addExtractionLabel_all = async (newLabel: string) => {
-
-    setIsLoading(true);
-    
-    const request = {
-      fileName: currentFileName,
-      content:processContentList,
-      newLabel: newLabel
-    }
-
-    defaultHttp.post(processDataRoutes.addExtractionLabel_all, request)
-      .then((response) => { 
-        fetchProcessedFileContent(currentFileName);
-      })
-      .catch((error) => {
-        handleErrorResponse(error);
-      }).finally(() => {
-        setIsLoading(false);
-      });
-  }
-
-  // ----- API -> 刪除欄位
-  const removeLabel_all = async (labelToRemove: string) => {
-    
-    setIsLoading(true);
-    const request = {
-      fileName: currentFileName,
-      content:processContentList,
-      labelToRemove: labelToRemove
-    }
-
-    defaultHttp.post(processDataRoutes.removeLabel_all, request)
-      .then((response) => {
-        fetchProcessedFileContent(currentFileName);
-       })
-      .catch((error) => {
-        handleErrorResponse(error);
-      }).finally(() => {
-        setIsLoading(false);
-      });
-  }
-
-  // ----- API -> 下載檔案
-  const downloadProcessedFile = async () => {
-
-    setIsLoading(true);
-    
-    const request = {
-      fileName: currentFileName,
-    }
-
-    defaultHttp.post(processDataRoutes.downloadProcessedFile, request)
-      .then((response) => {
-
-          // - 假設 response.data 為 binary
-          const blob = new Blob([response.data], { type: 'application/octet-stream' }); // 請根據你的檔案類型調整 MIME 類型
-          const url = URL.createObjectURL(blob);
-
-          // - 創建一個 <a> 標籤來觸發檔案下載
-          const a = document.createElement('a');
-          a.href = url;
-
-          // - 增加下載時間
-          const contentDisposition = response.headers['content-disposition'];
-          let fileName = currentFileName;
-          if (contentDisposition) {
-              const match = contentDisposition.match(/filename="?(.+)"?$/);
-              if (match && match[1]) {
-                  fileName = match[1];
-              }
-          }
-
-          a.download = fileName;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-
-          // - 釋放 URL
-          URL.revokeObjectURL(url);
-
-        })
-      .catch((error) => {
-        handleErrorResponse(error);
-      }).finally(() => { setIsLoading(false); });
-  }
-
-
-  // ----- API -> 刪除檔案
-  const deleteFile = async () => {
-    
-    setIsLoading(true);
-    const request = { fileName: currentFileName, }
-
-    defaultHttp.post(processDataRoutes.deleteFile, request)
-      .then((response) => { 
-        fetchFiles();
-        setCurrentFileName("");
-        setCurrentFileContentDisplay("");
-        setFileContentFields([]);
-        messageApi.success("刪除成功");
-        
-      })
-      .catch((error) => {
-        handleErrorResponse(error);
-      }).finally(() => {
-        setIsLoading(false);
-      });
-
-  }
-
-
-  // ----- API -> GPT 搜索
-  const GPTAction = async() => {
-
-    setIsLoading(true);
-
-    const request = {
-      labelFields: labelFields,
-      content: currentFileContentDisplay 
-    }
-
-    defaultHttp.post(processDataRoutes.gptRetrieve, request)
-      .then((response) => {
-
-        type respGPTValue = { name: string, gpt_value: string}
-        response.data.labelFields.forEach((responseItem: respGPTValue) => {
-          labelFields.forEach(labelField => {
-            if (labelField.name === responseItem.name) {
-              labelField.gpt_value = responseItem.gpt_value;
-            }
-          });
-        });
-
-        const updatedContentList: ProcessedContent[] = updateContentListByLabelFields();
-        setProcessContentList(updatedContentList);
-
-      })
-      .catch((error) => {})
-      .finally(() => { setIsLoading(false); })
-  }
-
-    // ----- API -> GPT 全部 搜索
-    const GPTAction_all = async() => {
-
-      setIsLoading(true);
-  
-      const request = {
-        content:  processContentList,
-        contentKey: fileContentKey
-      }
-
-      defaultHttp.post(processDataRoutes.gptRetrieve_all, request)
-        .then((response) => { 
-          type responseList = []
-          type responseItem = {name: string, gpt_value: string}
-          response.data.map((responseList: responseList, responseListIndex:number) => {
-            responseList.map((responseItem: responseItem, responseItemIndex) => {
-              processContentList[responseListIndex].processed?.forEach((item, index) => {
-                if (item.name === responseItem.name){
-                  item.gpt_value = responseItem.gpt_value;
-                }
-              })  
-            })
-          });
-          setProcessContentList(processContentList)
-        })
-        .catch((error) => {})
-        .finally(() => { setIsLoading(false); })
-    }
-  
-  // -------------------------------------------------- General Functions.
-
-  const updateContentListByLabelFields = () => {
-    const updatedContentList: ProcessedContent[] = [...processContentList];
-    if (currentFileContentPage >= 0 && currentFileContentPage < updatedContentList.length) {
-      const currentContent = updatedContentList[currentFileContentPage - 1];
-      if (currentContent) {
-          currentContent.processed = labelFields;
-      }
-    }
-    setProcessContentList(updatedContentList);
-    return updatedContentList
-  }
-
-  // ----- 選擇檔案
-  const chooseTheFile = (selectedValue: string) => {
-    setCurrentFileContentPage(1);
-    fetchFileContent(selectedValue);
-    fetchProcessedFileContent(selectedValue);
-    setCurrentFileName(selectedValue);
-    setLabelFields([]);
-  }
-
-  // ----- 上傳檔案的資料
-  const uploadFileProps: UploadProps = {
-    name: 'file',
-    beforeUpload: (file: UploadFile) => {
-      const isTxt = file.type === 'text/plain';
-      if (!isTxt) { messageApi.error(`${file.name} is not a "txt" file`); }
-  
-      const isFileNameExisting = fileNameList.some(entry => entry.value === file.name);
-      
-      if (isFileNameExisting) {
-        messageApi.error(`${file.name} already exists in the list.`);
-      }
-  
-      return isTxt && !isFileNameExisting;
-    },
-    action: processDataRoutes.uploadTheFile,
-    method: 'POST',
-
-    onChange(info) {
-      if (info.file.status === 'done') {
-        fetchFiles();
-        messageApi.success(`${info.file.name} file uploaded successfully`);
-      } else if (info.file.status === 'error') {
-        messageApi.error(`${info.file.name} file upload failed.`);
-      }
-    },
-  };
-
-  const fileName_filterOption = (input: string, option?: { label: string; value: string }) => {
-    if (!option) { return false; }
-    return (option.label ?? '').toLowerCase().includes(input.toLowerCase());
-  };
-
-  // ----- handle -> 修改新欄位的 Input
-  const handleNewLabelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setNewLabel(e.target.value);
-  };
-
-  // ----- handle -> 修改 re 公式
-  const handleREFormulaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setReFormula(e.target.value);
-  }
-
-  // ----- handle -> 對要擷取內容 HighLight, 並修改相關資訊，送到 Fields Input 中
-  const handleTextSelection = (event: React.SyntheticEvent<HTMLTextAreaElement>) => {
-    const textarea = event.currentTarget;
-    const selectedText = textarea.value.substring(textarea.selectionStart, textarea.selectionEnd);
-
-    if (selectedText) {
-      
-        const updatedLabelFields = labelFields.map(field => {
-            if (field.name === currentSelectedNewLabel) {
-
-                // 使用正規表示法擷取前後文
-                const surroundingText = textarea.value.slice(Math.max(0, textarea.selectionStart - 50), textarea.selectionEnd + 50);
-                const regex = new RegExp(`([^，。、]*[，。、]*[^，。、]*${selectedText}[^，。、]*[，。、]*[^，。、]*)`);
-                const match = surroundingText.match(regex);
-                const the_surrounding_words = match ? match[0] : "";
-
-                return { 
-                    ...field, 
-                    value: selectedText, 
-                    the_surrounding_words: the_surrounding_words,
-                };
-            }
-
-            return field;
-        });
-        setLabelFields(updatedLabelFields);
-
-        // - 更新 processContentList[currentFileContentPage] 的內容
-        const updatedProcessContentList = [...processContentList];
-        const currentContent = updatedProcessContentList[currentFileContentPage-1];
-        updatedProcessContentList[currentFileContentPage-1] = {
-            ...currentContent,
-            processed: updatedLabelFields
+  // -------------------------------------------------- Fields Settings
+
+    // - Global Settings
+    const [extraction_label_form] = Form.useForm();
+    const [messageApi, contextHolder] = message.useMessage();
+    const navigate = useNavigate();
+
+    const storedAccount = sessionStorage.getItem('account');
+
+    const [isLoading, setIsLoading] = useState(false);
+    const [isVisible, setIsVisible] = useState<boolean[]>([false, true, false, true, false]);
+    const chooseIsVisible = (index: number) => {
+        return (event: React.MouseEvent<HTMLElement>) => {
+            const newIsVisible = [...isVisible];
+            newIsVisible[index] = !newIsVisible[index];
+            setIsVisible(newIsVisible);
         };
-        setProcessContentList(updatedProcessContentList); 
     }
-  } 
-
-  // ----- 換頁
-  const changePage = (page: number) => {
-    
-    const index = page - 1; // 將頁碼轉換為索引 = 原因是因為index從0開始，page從1開始
-    setCurrentFileContentPage(page);
-    setCurrentFileContentJson(fileContentList[index]);
-    setCurrentFileContentDisplay(fileContentList[index][fileContentKey]);
-    
-
-    // - 修改 processed List. 
-    const clearedLabelFields = labelFields.map(field => ({
-      name: field.name,
-      value: "",
-      the_surrounding_words: "",
-      regular_expression_match: "",
-      regular_expression_formula: "",
-      gpt_value: ""
-    }));
-
-    let newClearedLabelFields: FieldsNameItem[] = [...clearedLabelFields]; 
-    const processed = processContentList[index]?.processed;
-    if (processed) {
-      for (let item of processed) {
-
-        // 檢查 clearedLabelFields 是否已經有該項目
-        const exists = newClearedLabelFields.some(field => field.name === item.name);
-        
-        // 如果 clearedLabelFields 中沒有該項目，則新增
-        if (!exists) {
-          newClearedLabelFields.push({
-              ...item
-          });
-       }
-        // 如果 clearedLabelFields 中已有該項目，則覆蓋
-        else {
-          const indexToUpdate = newClearedLabelFields.findIndex(field => field.name === item.name);
-          if (indexToUpdate !== -1) {
-            Object.assign(newClearedLabelFields[indexToUpdate], item);
-          }
-        }
-      }
-    } 
-    
-    setLabelFields(newClearedLabelFields);
-    updateContentListByLabelFields();
-  }
-
-  const reAction  = () => {
-
-    // - Loading Progress
-    setActionLoading_RE(true);
-    setActionLoading_Progress(10); // 開始進度條至 10%
-    
-    const rExp: RegExp = new RegExp(REFormula, 'g');
-
-    // - for - 透過迴圈將每一個 fileContentList 的元素進行擷取
-    const newLabelFields = processContentList.map((processContent, index) => {
-
-      const preREContent = fileContentList[index][fileContentKey]
-      const match = rExp.exec(preREContent)
-      if (processContent['processed'] ) {
-
-        // 搜尋並更新 process 中的適當物件
-        processContent['processed'].forEach((field: FieldsNameItem) => {
-          if (field.name === currentSelectedNewLabel) {
-
-            field.regular_expression_formula = REFormula;
-
-            if(match) field.regular_expression_match = match[1] || "";
-            else field.regular_expression_match = "";
-          }
-        });
-      }
-
-      setActionLoading_Progress(10 + (90 * (index + 1) / processContentList.length)); // 設定進度條根據目前的迴圈狀態
-      return processContent;
+    const [modalSetting, setModalSetting] = useState<ModalFormatterType>({
+        // = Default Modal Settings 
+        isOpen: false, 
+        title: "Titles", 
+        ok: { onClick: () => {console.log("OK!")} }, 
+        cancel: { onClick: () => closeModal() }, 
+        icon: <CheckOutlined />, 
+        confirmLoading: false, 
+        message: "This is the default modal setting."
     });
-
-    async function handleProcessAndUpload() {
-      await setProcessContentList(newLabelFields);
-      uploadProcessedFile();
-    }
+    const closeModal = () => { setModalSetting((prevState: ModalFormatterType) => ({...prevState, isOpen: false})) } 
   
-    handleProcessAndUpload();
-    // setActionLoading_RE(false);
+    // - File List
+    const [currentPage, setCurrentPage] = useState(1);
+    const [currentFileName, setCurrentFileName] = useState<string | null>(null);
+    const [filesNameList, setFilesNameList] = useState<SelectType[]>([]);
+    const [currentFileContentVisual, setCurrentFileContentVisual] = useState<string>("");
+    const [isBreakSentence, setIsBreakSentence] = useState<boolean>(true);
+    const breakSentence_CurrentFileContentVisual = () => {
 
-  }
-
-  const addItem = (text: string) => {
-
-    setIsLoading(true);
-
-    // - 檢查是否有重複的
-    const isExisting = labelFields.some(labelField => labelField.name === text);
-    if(isExisting) {
-      messageApi.error(`${text} already exists in the list.`);
-      setIsLoading(false);
-      return;
-    }
-
-    // - 確認可儲存
-    const newLabel: FieldsNameItem = { 
-      name:text, 
-      value:"", 
-      the_surrounding_words: "", regular_expression_match: "", regular_expression_formula: "",
-      gpt_value: ""
-    };
-    setLabelFields(prevLabelFields => [...prevLabelFields, newLabel]);
-    setNewLabel("");
-    addExtractionLabel_all(text);
-  };
-
-  // ----- show return.
-  const showLabelList = () => {
-
-    const handleDelete = (indexToDelete: number, labelName:string) => {
-      const updatedLabelFields = labelFields.filter((_, index) => index !== indexToDelete);
-      setLabelFields(updatedLabelFields); 
-      removeLabel_all(labelName);
-    };
-
-    const handleClean = (indexToClean: number, labelName:string) => {
-      setIsLoading(true)
-      const updatedLabelFields = [...labelFields];
-      updatedLabelFields[indexToClean].value = '';
-      setLabelFields(updatedLabelFields);
-      setIsLoading(false)
-    }
-
-    const handleUpdate = (indexToUpdate: number, labelName:string, newValue: string) => {
-      const updatedLabelFields = [...labelFields];
-      const labelToUpdate = updatedLabelFields[indexToUpdate];
-      
-      if (labelToUpdate.name === labelName) {
-        labelToUpdate.value = newValue;
-      }
+        if (isBreakSentence == false)
+            return currentFileContentVisual
     
-      setLabelFields(updatedLabelFields);
-    };
+        let sentences = [];
+        let sentence = "";
+        let currentFileContentArray = Array.from(currentFileContentVisual);
+    
+        for (let i = 0; i < currentFileContentArray.length; i++) {
 
-    const handleHideLabel = (indexToHide: number, labelName:string, e: CheckboxChangeEvent) => {
-      console.log(indexToHide, labelName, e.target.checked)
+
+            let char = currentFileContentArray[i];
+            let nextChar = currentFileContentArray[i + 1]; // 取得下一個字符
+            let add_char = char;
+    
+            if (char === '（' || char === '(' ) {
+                add_char = '\t' + add_char
+            }
+    
+            sentence += add_char;
+            if ((char === '。' || char === '？' || char === '！') && !(nextChar === '「' || nextChar === '」')) {
+                sentences.push(sentence + "\n\t");
+                sentence = "";
+            }
+
+        }
+        if (sentence) sentences.push(sentence); // 確保最後一句也被加入
+        return sentences.join("");
     }
     
-    var isLabelFieldsVisual = new Array(labelFields.length).fill(true);
+    const readTheCurrentPage = (page: number) => {
+        const fileIndex = (page > 0) ? page - 1 : 0;
+        return fileIndex;
+    }
+   
+    // - Processed Content
+    const [contentList, setContentList] = useState<ProcessedContentType[]>([]); 
+    const [fileFieldsList, setFileFieldsList] = useState<SelectType[]>([]);
+    const [currentContentFieldKey, setCurrentContentFieldKey] = useState<string>("");
+
+    // - Processed Fields
+    const [currentProcessedFields, setCurrentProcessedFields] = useState<ProcessedFieldsType[]>([]); 
+    const [currentSelectedLabel, setCurrentSelectedLabel] = useState<string>(""); // = 選擇的新欄位
+    
+    // - other options.
+    const [processLabelCheckedList, setProcessLabelCheckedList] = useState<CheckboxValueType[]>([]);
+    const [processLabelOptions, setProcessLabelOptions] = useState<string[]>([]);
+    const [newExtractionLabel, setNewExtractionLabel] = useState<string>("");
+    const [isLockingCheckedAll, setIsLockingCheckedAll] = useState<boolean>(false); // TODO: 改成鎖定目前選擇
+    const [REFormula, setReFormula] = useState<string>("");
+    const [textAreaPx, setTextAreaPx] = useState<number | null>(18);
+
+    // -------------------------------------------------- API Settings
+
+    // ----- API -> 抓取在 uploads/files 裡面的資料名稱
+    const fetchFilesName = async () => {
+
+        defaultHttp.get(processDataRoutes.fetchUploadsFileName, {
+            headers: storedHeaders()
+        })
+        .then((response) => {
+            const newFileNames = response.data.map((fileName: string) => ({ value: fileName, label: fileName }));
+            setFilesNameList(newFileNames);
+        })
+        .catch((error) => {
+            handleErrorResponse(error);
+        }).finally(() => {});
+    }
+
+    // ----- API -> 讀取 processed 的內容
+    const fetchProcessedFileContent = async (fileName) => {
+        setIsLoading(true); 
+    
+        const request = {
+            fileName: fileName,
+        };
+    
+        try {
+            const response = await defaultHttp.post(processDataRoutes.fetchUploadsProcessedFileName, request, { headers: storedHeaders() });
+    
+            // @ 擷取所有欄位名稱(除了 processed)
+            const keysWithoutProcessed = Object.keys(response.data[0]).filter(key => key !== 'processed');
+            const formattedKeys = keysWithoutProcessed.map(key => ({
+                value: key,
+                label: key
+            }));
+            setFileFieldsList(formattedKeys)
+            setCurrentContentFieldKey(formattedKeys[0].value)
+            setCurrentFileContentVisual(response.data[0][formattedKeys[0].value])
+    
+            // @ 抓取 content, processed 內容
+            setContentList(response.data);
+            if (response?.data?.[readTheCurrentPage(currentPage)]?.processed) {
+                const processedData = response.data[readTheCurrentPage(currentPage)].processed;
+                setCurrentProcessedFields(processedData);
+                
+                // @ Options 選擇要顯示的欄位
+                const processedNameList = processedData.map((item:ProcessedFieldsType) => (
+                    item.name
+                ));
+                setProcessLabelOptions(processedNameList);
+                setNewExtractionLabel("");
+            }
+    
+            setNewExtractionLabel("");
+        } catch (error) {
+            handleErrorResponse(error);
+        } finally {
+            setIsLoading(false);
+        }
+    }
+    
+
+    // const fetchProcessedFileContent = async (fileName: string) => {
+
+    //     setIsLoading(true); 
+    //     const request = {
+    //         fileName: fileName as string,
+    //     }
+
+    //     defaultHttp.post(processDataRoutes.fetchUploadsProcessedFileName, request, {
+    //         headers: storedHeaders()
+    //     })
+    //     .then((response) => {
+
+    //         // @ 擷取所有欄位名稱(除了 processed)
+    //         const keysWithoutProcessed = Object.keys(response.data[0]).filter(key => key !== 'processed');
+    //         const formattedKeys = keysWithoutProcessed.map(key => ({
+    //             value: key,
+    //             label: key
+    //         }));
+    //         setFileFieldsList(formattedKeys)
+    //         setCurrentContentFieldKey(formattedKeys[0].value)
+    //         setCurrentFileContentVisual(response.data[0][formattedKeys[0].value])
+
+    //         // @ 抓取 content, processed 內容
+    //         setContentList(response.data);
+    //         if (response?.data?.[readTheCurrentPage(currentPage)]?.processed) {
+    //             const processedData = response.data[readTheCurrentPage(currentPage)].processed;
+    //             setCurrentProcessedFields(processedData);
+                
+    //             // @ Options 選擇要顯示的欄位
+    //             const processedNameList = processedData.map((item:ProcessedFieldsType) => (
+    //                 item.name
+    //             ));
+    //             setProcessLabelOptions(processedNameList);
+    //             setNewExtractionLabel("");
+    //         }
+    //     })
+    //     .catch((error) => {
+    //         handleErrorResponse(error);
+    //     }).finally(() => { setIsLoading(false); });
+    // }
+
+    // ----- API -> 存擋
+    const uploadProcessedFile = async () => {
+
+        setIsLoading(true); 
+        const request = {
+            fileName: currentFileName,
+            content: contentList
+        }
+
+        defaultHttp.post(processDataRoutes.uploadProcessedFile, request, {
+            headers: storedHeaders()
+        })
+        .then((response) => {
+
+
+        })
+        .catch((error) => {
+            handleErrorResponse(error);
+        }).finally(() => { setIsLoading(false); });
+    }
+
+
+    // ----- API -> 下載檔案
+    const downloadProcessedFile = async () => {
+
+        setIsLoading(true);
+
+        const request = {
+            fileName: currentFileName,
+        }
+
+        defaultHttp.post(processDataRoutes.downloadProcessedFile, request, {
+            headers: storedHeaders()
+        })
+        .then((response) => {
+
+            // @ 假設 response.data 為 binary
+            const blob = new Blob([response.data], { type: 'application/octet-stream' }); // 請根據你的檔案類型調整 MIME 類型
+            const url = URL.createObjectURL(blob);
+
+            // @ 創建一個 <a> 標籤來觸發檔案下載
+            const a = document.createElement('a');
+            a.href = url;
+
+            // @ 增加下載時間
+            const contentDisposition = response.headers['content-disposition'];
+            let fileName = currentFileName;
+            if (contentDisposition) {
+                console.log(contentDisposition)
+                const match = contentDisposition.match(/filename="?(.*?)"?$/);
+                if (match && match[1]) {
+                    fileName = match[1];
+                }
+                console.log(fileName)
+            }
+
+            a.download = fileName || "";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+
+            // - 釋放 URL
+            URL.revokeObjectURL(url);
+        })
+        .catch((error) => {
+            handleErrorResponse(error);
+        }).finally(() => { setIsLoading(false); });
+    }
+
+    // ----- API -> 刪除檔案
+    const deleteFile = async () => {
+        
+        setIsLoading(true);
+        const request = { fileName: currentFileName, }
+
+        defaultHttp.post(processDataRoutes.deleteFile, request, {
+            headers: storedHeaders()
+        })
+        .then((response) => { 
+
+            fetchFilesName();
+            cleanTheField();
+
+            messageApi.success("刪除成功");
+            
+        })
+        .catch((error) => {
+            handleErrorResponse(error); 
+        }).finally(() => {
+            setIsLoading(false);
+        });
+
+    }
+
+    // ----- API -> 增加欄位
+    const addExtractionLabel_all = async () => {
+        setIsLoading(true);
+    
+        const request = {
+            fileName: currentFileName,
+            content: contentList,
+            newLabel: newExtractionLabel
+        };
+    
+        try {
+            const response = await defaultHttp.post(processDataRoutes.addExtractionLabel_all, request, { headers: storedHeaders() });
+            fetchProcessedFileContent(currentFileName || "");
+        } catch (error) {
+            handleErrorResponse(error);
+        } finally {
+            setIsLoading(false);
+        }
+    }
+    
+    // const addExtractionLabel_all = async () => {
+
+    //     setIsLoading(true);
+
+    //     const request = {
+    //         fileName: currentFileName,
+    //         content:contentList,
+    //         newLabel: newExtractionLabel
+    //     }
+
+    //     defaultHttp.post(processDataRoutes.addExtractionLabel_all, request, {
+    //         headers: storedHeaders()
+    //     })
+    //     .then((response) => {  
+    //         // setContentList(response.data)
+    //         fetchProcessedFileContent(currentFileName || "");
+    //     })
+    //     .catch((error) => {
+    //         handleErrorResponse(error);
+    //     }).finally(() => {
+    //         setIsLoading(false);
+    //     });
+    // }
+
+    // ----- API -> 刪除欄位
+    const removeLabel_all = async (labelToRemove: string) => {
+        setIsLoading(true);
+        const request = {
+            fileName: currentFileName,
+            content: contentList,
+            labelToRemove: labelToRemove
+        };
+    
+        try {
+            const response = await defaultHttp.post(processDataRoutes.removeLabel_all, request, { headers: storedHeaders() });
+            // 处理响应
+        } catch (error) {
+            handleErrorResponse(error);
+        } finally {
+            setIsLoading(false);
+        }
+    }
+
+    
+    // const removeLabel_all = async (labelToRemove: string) => {
+        
+    //     setIsLoading(true);
+    //     const request = {
+    //         fileName: currentFileName,
+    //         content:contentList,
+    //         labelToRemove: labelToRemove
+    //     }
+    //     defaultHttp.post(processDataRoutes.removeLabel_all, request, { headers: storedHeaders() })
+    //     .then((response) => {
+    //     })
+    //     .catch((error) => {
+    //         handleErrorResponse(error);
+    //     }).finally(() => {
+    //         setIsLoading(false);
+    //     });
+    // }
+
+
+    // -------------------------------------------------- Other Setting.
+    
+    // ----- Props -> 上傳檔案的資料
+    const uploadFileProps: UploadProps = { name: 'file', 
+        beforeUpload: (file: UploadFile) => {
+            const isTxt = file.type === 'text/plain';
+            if (!isTxt) { messageApi.error(`${file.name} is not a "txt" file`); }
+
+            const isFileNameExisting = filesNameList.some(entry => entry.value === file.name);
+            
+            if (isFileNameExisting) {
+                messageApi.error(`${file.name} already exists in the list.`);
+            }
+            return isTxt && !isFileNameExisting;
+        },  
+        
+        action: processDataRoutes.uploadTheFile,
+        method: 'POST',
+        headers: storedHeaders(),
+
+        onChange(info) {
+            if (info.file.status === 'done') {
+                fetchFilesName();
+                messageApi.success(`${info.file.name} file uploaded successfully`);
+            } else if (info.file.status === 'error') {
+                messageApi.error(`${info.file.name} file upload failed.`);
+            }
+        },
+    };
+
+    // ----- autoVariable -> 自動生成
+    const createProcessedFields = <T extends Partial<ProcessedFieldsType>>(fields: T): ProcessedFieldsType => {
+
+        const exampleProcessedFields: ProcessedFieldsType = {
+            name: "",
+            value: "",
+            the_surrounding_words: "",
+            regular_expression_match: "",
+            regular_expression_formula: "",
+            gpt_value: "",
+          };
+        
+          // 使用 Object.keys 在這個示例對象上，以獲取所有的鍵
+          const defaultFields = Object.keys(exampleProcessedFields).reduce((acc, key) => {
+            acc[key as keyof ProcessedFieldsType] = "";
+            return acc;
+          }, {} as ProcessedFieldsType);
+          
+        return {
+            ...defaultFields,
+            ...fields
+        };
+    }
+
+    // ----- void -> 更新 processed 到 contentList 
+    const updateProcessedToContent = (updatedProcessedFields: ProcessedFieldsType[]) => {
+        const updateCurrentProcessedFields = [...contentList];
+        const currentContent = updateCurrentProcessedFields[readTheCurrentPage(currentPage)];
+        updateCurrentProcessedFields[readTheCurrentPage(currentPage)] = {
+            ...currentContent,
+            processed: updatedProcessedFields
+        };
+        setContentList(updateCurrentProcessedFields);
+        return updateCurrentProcessedFields
+    }
+
+    // -------------------------------------------------- Other Functions
+
+    // ----- 選擇檔案
+    const chooseTheFile = (selectedValue: string) => {
+        setCurrentFileName(selectedValue);
+        fetchProcessedFileContent(selectedValue);
+    }
+    
+    // ----- 換頁
+    const changePage = (page: number) => {
+        const indexPage = readTheCurrentPage(page);
+
+        setCurrentPage(page);
+        setCurrentProcessedFields(contentList[indexPage]?.processed || []);
+        setCurrentFileContentVisual(contentList[indexPage][currentContentFieldKey]);
+
+        // @ 確認是否全選
+        if (isLockingCheckedAll) {
+            // setProcessLabelCheckedList(processLabelOptions);
+        }
+        else {
+            // @ 查看內容有重複欄位顯示在 CheckedList.
+            const filteredList = processLabelOptions.filter((item:string) => {
+                return contentList[indexPage][currentContentFieldKey].includes(item);
+            });
+            setProcessLabelCheckedList(filteredList);
+        }
+
+        // uploadProcessedFile();
+        
+    }
+
+    // ----- 增加處理欄位
+    const addExtractionLabel = () => {
+
+        setIsLoading(true);
+
+        // @ 檢查是否重複
+        const isExisting = currentProcessedFields.some(processedField => processedField.name === newExtractionLabel );
+        if (isExisting) {
+            messageApi.error(`${newExtractionLabel} already exists in the list.`);
+            setIsLoading(false);
+            return;
+        }
+
+        // @ 確認可以儲存
+        const temp_newExtractionLabel = createProcessedFields({name: newExtractionLabel});
+        setCurrentProcessedFields(prevLabelFields => [...prevLabelFields, temp_newExtractionLabel]);
+        setNewExtractionLabel("");
+
+        const allLabelOptions = [...processLabelOptions, newExtractionLabel]
+        setProcessLabelOptions(allLabelOptions);
+        
+        if (!isLockingCheckedAll){
+            setProcessLabelCheckedList([...processLabelCheckedList, newExtractionLabel])
+        }
+
+        addExtractionLabel_all();
+    }
+
+    // ----- Filter -> 選擇檔案 
+    const labelValue_selectedFilterOption = (input: string, option?: { label: string; value: string }) => {
+        if (!option) { return false; }
+        return (option.label ?? '').toLowerCase().includes(input.toLowerCase());
+    };
+
+    // ----- handle -> Check ALL Processed Label Checkboxes
+    const handleCheckAllChange = (e: CheckboxChangeEvent) => {
+        setProcessLabelCheckedList(e.target.checked ? processLabelOptions : []);
+    };
+    // ----- handle -> 若修改了 Processed Label
+    const handleChangeCheckbox = (list: CheckboxValueType[]) => {
+
+
+        if (!isLockingCheckedAll) {
+            
+            const addedItems:string = String(list.filter(item => !processLabelCheckedList.includes(item))[0] || ""); // = 找出新增的項目
+            const removedItems = processLabelCheckedList.filter(item => !list.includes(item))[0]; // = 找出移除的項目
+
+            setTimeout(() => {
+                const anchorElement = document.getElementById(`anchor-${addedItems}`);
+                const cardElement = document.getElementById('extraction-labels-card'); // 或者使用其他選擇器獲取 Card 元素
+
+                if (anchorElement && cardElement) {
+                    anchorElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                }
+
+            }, 0);
+
+            setCurrentSelectedLabel(addedItems)
+            setProcessLabelCheckedList(list);
+        }
+    };
+
+    // ----- handle -> 修改 re 公式
+    const handleREFormulaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setReFormula(e.target.value);
+    }
+    
+    // ----- handle -> 鎖定全選
+    const handleLockingCheckedAll = (isLocking: boolean) => {
+        setIsLockingCheckedAll(!isLockingCheckedAll);
+        if (isLocking) { 
+            // setProcessLabelCheckedList(processLabelOptions);
+        }
+    }
+
+    // ----- handle -> 刪除檔案
+    const handleDeleteFile = async () => {
+        await deleteFile();
+        closeModal(); 
+    }
+
+    // ----- handle -> 清楚資料
+    const cleanTheField = () => {
+        setCurrentFileName("");
+        setCurrentFileContentVisual("");
+        setCurrentProcessedFields([]);
+        setCurrentContentFieldKey("");
+        setCurrentSelectedLabel("");
+    }
+
+    // ----- handle -> 對要擷取內容 HighLight, 並修改相關資訊，送到 Fields Input 中
+    const handleTextSelection = (event: React.SyntheticEvent<HTMLTextAreaElement>) => {
+        const textarea = event.currentTarget;
+        const selectedText = textarea.value.substring(textarea.selectionStart, textarea.selectionEnd);
+        
+        // @ 更新當前選擇項目欄位的 Input.
+        if (selectedText) {
+
+            const updateFields = currentProcessedFields.map ( field => {
+                if (field.name === currentSelectedLabel) { 
+
+                    // 使用正規表示法擷取前後文
+                    const surroundingText = textarea.value.slice(Math.max(0, textarea.selectionStart - 50), textarea.selectionEnd + 50);
+                    const regex = new RegExp(`([^，。、]*[，。、]*[^，。、]*${selectedText}[^，。、]*[，。、]*[^，。、]*)`);
+                    const match = surroundingText.match(regex);
+                    const the_surrounding_words = match ? match[0] : "";
+
+                    return { 
+                        ...field, 
+                        value: selectedText, 
+                        the_surrounding_words: the_surrounding_words,
+                    };
+                }
+
+                return field;
+            })
+
+            setCurrentProcessedFields(updateFields);
+            updateProcessedToContent(updateFields); // @ 更新整個檔案
+            
+        }
+    } 
+
+    // ----- handle -> 處理「當前」頁面的 GPT
+    const handleGptAction = () => {
+
+        setIsLoading(true);
+
+        const request = {
+          processedFields: currentProcessedFields,
+          currentFileContentVisual: currentFileContentVisual,
+        }
+    
+        defaultHttp.post(processDataRoutes.gptRetrieve, request)
+          .then((response) => {
+    
+            type respGPTValue = { name: string, gpt_value: string}
+            response.data.labelFields.forEach((responseItem: respGPTValue) => {
+                currentProcessedFields.forEach(processedField => {
+                    if (processedField.name === responseItem.name) {
+                        processedField.gpt_value = responseItem.gpt_value;
+                    }
+                });
+            });
+    
+            updateProcessedToContent(currentProcessedFields);
+          })
+          .catch((error) => {})
+          .finally(() => { setIsLoading(false); })
+    }
+
+    // ----- handle -> 處理「全部」頁面的 GPT
+    const handleGptActionAll = () => {
+        setIsLoading(true);
+  
+        const request = {
+          content:  contentList,
+          contentKey: currentContentFieldKey
+        }
+  
+        defaultHttp.post(processDataRoutes.gptRetrieve_all, request)
+          .then((response) => { 
+            type responseList = []
+            type responseItem = {name: string, gpt_value: string}
+            response.data.map((responseList: responseList, responseListIndex:number) => {
+              responseList.map((responseItem: responseItem, responseItemIndex) => {
+                contentList[responseListIndex].processed?.forEach((item, index) => {
+                  if (item.name === responseItem.name){
+                    item.gpt_value = responseItem.gpt_value;
+                  }
+                })  
+              })
+            });
+            setContentList(contentList)
+          })
+          .catch((error) => {})
+          .finally(() => { setIsLoading(false); })
+    }
+
+    // ----- handle -> 處理 RE 
+    const handleReAction = () => {
+
+        // - Loading Progress
+        setIsLoading(true);
+
+        // - Start to Regualr Expression 
+        const rExp: RegExp = new RegExp(REFormula, 'g');
+
+        // @ for - 透過迴圈將每一個 contentList 的元素進行擷取
+        const newProcessedFields = contentList.map((content, index) => {
+            
+            const preREContent = content[currentContentFieldKey]; 
+            const match = rExp.exec(preREContent);
+            if (content['processed'] ) {
+                content['processed'].forEach((field: ProcessedFieldsType) => {
+                    
+                    field.regular_expression_formula = REFormula;
+                    if(match) field.regular_expression_match = match[1] || "";
+                    else field.regular_expression_match = "";
+                    
+                });
+            }
+
+            return content;
+        })
+
+        async function handleProcessAndUpload() {
+            await setContentList(newProcessedFields);
+            uploadProcessedFile();
+        }
+
+        // - Loading Done
+        handleProcessAndUpload();
+        setIsLoading(false);
+        
+    }
+
+    // ----- Template -> 編輯欄位
+    const editFieldsLabelTemplate = () => {
+
+        const handleDelete = (indexToDelete: number, labelName:string) => {
+            setIsLoading(true)
+
+            
+            if (currentSelectedLabel === labelName) {
+                console.log(currentSelectedLabel, labelName)
+                setCurrentSelectedLabel("");
+            }
+
+            const updatedProcessedFields = currentProcessedFields.filter((_, index) => index !== indexToDelete);
+            const updateCheckedList = processLabelCheckedList.filter((name, index) => name !== labelName);
+            const updateProcessLabelOptions = processLabelOptions.filter((name, index) => name !== labelName);
+
+            setCurrentProcessedFields(updatedProcessedFields); 
+            setProcessLabelOptions(updateProcessLabelOptions);
+            setProcessLabelCheckedList(updateCheckedList);
+
+
+            updateProcessedToContent(updatedProcessedFields);   // @ 更新整個檔案
+            removeLabel_all(labelName);
+            setIsLoading(false)
+        };
+
+        const handleClean = (indexToClean: number, labelName:string) => {
+            setIsLoading(true)
+            const updatedProcessedFields = [...currentProcessedFields];
+            updatedProcessedFields[indexToClean].value = '';
+            setCurrentProcessedFields(updatedProcessedFields);
+            setIsLoading(false)
+        }
+        
+        const handleUpdate = (indexToUpdate: number, labelName:string, newValue: string) => {
+            setIsLoading(true)
+            const updatedLabelFields = [...currentProcessedFields];
+            if (updatedLabelFields[indexToUpdate].name == labelName){
+                updatedLabelFields[indexToUpdate].value = newValue;
+            }
+            
+            setCurrentProcessedFields(updatedLabelFields);
+            setIsLoading(false)
+        };
+
+        const handleChoose = (labelName: string) => {
+            setCurrentSelectedLabel(labelName)
+        }
+
+        return ( <>
+        
+            {currentProcessedFields.map((originalField: ProcessedFieldsType, originalIndex: number) => {
+                if (processLabelCheckedList.includes(originalField.name)) {
+                    return (
+                        <div key={originalIndex} id={`anchor-${originalField.name}`} style={{display: 'flex', alignItems: 'center'}}>
+                            <Form.Item label={<span  style={{  color: originalField.name === currentSelectedLabel ? 'red' : 'black'  }}>{originalField.name}</span>}>
+                                <div className='grid grid-cols-12 gap-4' style={{alignItems: 'center'}} onClick={() => {handleChoose(originalField.name)}}>
+                                    <TextArea 
+                                        className="col-span-10" 
+                                        value={originalField.value}
+                                        onChange={(e) => handleUpdate(originalIndex, originalField.name, e.target.value)}  />
+
+                                    <Button 
+                                        className='ant-btn-icon' 
+                                        onClick={(e) => {
+                                            e.stopPropagation(); // 阻止事件繼續傳播
+                                            handleDelete(originalIndex, originalField.name); }}>
+                                        <DeleteOutlined />
+                                    </Button>
+                                </div>
+                            </Form.Item>
+                        </div>
+                    );
+                }
+            })}
+        
+        </> )
+    }
+
+    // ----- 進入網頁執行一次 Init
+    useEffect(() => {
+        fetchFilesName();
+    }, []);
+
+    useEffect(() => {
+        // 如果已經有 storedAccount，則重定向到標籤資料頁面
+        if (storedAccount) {
+            navigate(webRoutes.labelData);
+        }
+    }, [navigate, storedAccount]);
+    
+    useEffect(() => {
+    
+        const interval = setInterval(() => {
+            if (currentFileName && currentFileContentVisual && !isLoading) {
+                uploadProcessedFile()
+            }
+        }, 1000 * 60 * 15); // 每隔3000毫秒（即3秒）執行一次
+    
+        return () => clearInterval(interval); // 清除間隔，防止記憶體洩漏
+    
+    }, [currentFileName, currentFileContentVisual, isLoading]); // 空依賴數組意味著這個效果只會在組件掛載時運行一次
+    
 
     return (
-      <>
-        {labelFields.map((labelField: FieldsNameItem, index: number) => (
-          
-          <div key={index} >
-
-            <Form.Item 
-              label={
-                <span 
-                  style={{  color: labelField.name === currentSelectedNewLabel ? 'red' : 'black'  }}
-                  onClick={() => {
-                    if(labelField.name == currentSelectedNewLabel) setCurrentSelectedNewLabel("")
-                    else setCurrentSelectedNewLabel(labelField.name) 
-                  }}  >
-                  {labelField.name}
-                </span>
-              } 
-            >
-              <div className='grid grid-cols-12 gap-4'>
-                <TextArea 
-                  value={labelField.value} 
-                  onChange={(e) => handleUpdate(index, labelField.name, e.target.value)} 
-                  className="col-span-10" 
-                />                
-                <button onClick={() => handleDelete(index, labelField.name)} type="button" className='ant-btn-delete'><DeleteOutlined /></button> 
-                {/* <Checkbox onChange={(e) => handleHideLabel(index, labelField.name, e)}></Checkbox> */}
-                <button onClick={() => handleClean(index, labelField.name)} type="button" className='ant-btn-action'><ClearOutlined /></button> 
-              </div>
-            </Form.Item>
-          </div>
-        ))}
-      </>
-    );
-  }
-
-  const handleKeyDown = (event: KeyboardEvent) => {
-    switch (event.key) {
-      case "ArrowRight": // 右鍵
-        if (currentFileContentPage < fileContentList.length) {
-          changePage(currentFileContentPage + 1);
-        }
-        break;
-      case "ArrowLeft": // 左鍵
-        if (currentFileContentPage > 1) {
-          changePage(currentFileContentPage - 1);
-        }
-        break;
-
-    }
-  };
-
-  
-  // useEffect(() => {
-  //   window.addEventListener("keydown", handleKeyDown);
-  
-  //   // 清除事件監聽器
-  //   return () => {
-  //     window.removeEventListener("keydown", handleKeyDown);
-  //   };
-  // }, []);
-  
-  // ----- 進入網頁執行一次
-  useEffect(() => {
-    fetchFiles();
-  }, []);
-  
-  return (
     <Spin spinning={isLoading} tip="Loading...">
-
-      <div className='mb-4'>
-        <Button onClick={chooseIsVisible(0)} className={isVisible[0] ? 'ant-btn-beChosen' : 'ant-btn-notChosen'}>Uploads</Button>
-        <Button onClick={chooseIsVisible(1)} className={isVisible[1] ? 'ant-btn-beChosen' : 'ant-btn-notChosen'}>Fields</Button>
-        <Button onClick={chooseIsVisible(2)} className={isVisible[2] ? 'ant-btn-beChosen' : 'ant-btn-notChosen'}>Add Label</Button>
-        <Button onClick={chooseIsVisible(3)} className={isVisible[3] ? 'ant-btn-beChosen' : 'ant-btn-notChosen'}>Regular Expression</Button>
-        <Button onClick={chooseIsVisible(4)} className={isVisible[4] ? 'ant-btn-beChosen' : 'ant-btn-notChosen'}>GPT</Button>
-      </div>
         
-      <Row gutter={24}>
         
-        <Col xl={14} lg={14} md={14} sm={24} xs={24} style={{ marginBottom: 24}} >
-          <Card bordered={false} className="w-full h-full cursor-default">
-          <div className='grid gap-2 mb-4 grid-cols-5'>
-            <Pagination 
-              className='w-full mb-4 col-span-4' 
-              pageSize={1} 
-              current={currentFileContentPage} 
-              total={fileContentList.length} 
-              defaultCurrent={1}
-              onChange={(page, pageSize) => changePage(page)}
-              simple />
+        {/* 開關位置  */}
+        <div className="mb-4 space-x-2">
+            <Button onClick={chooseIsVisible(0)} className={isVisible[0] ? 'ant-btn-none' : 'ant-btn-notChosen'}>Actions</Button>
+            <Button onClick={chooseIsVisible(1)} className={isVisible[1] ? 'ant-btn-none' : 'ant-btn-notChosen'}>Labels Checked</Button>
+            <Button onClick={chooseIsVisible(2)} className={isVisible[2] ? 'ant-btn-none' : 'ant-btn-notChosen'}>Add Extraction Label</Button>
+            <Button onClick={chooseIsVisible(3)} className={isVisible[3] ? 'ant-btn-none' : 'ant-btn-notChosen'}>Extraction Labels</Button>
+            <Button onClick={chooseIsVisible(4)} className={isVisible[4] ? 'ant-btn-none' : 'ant-btn-notChosen'}>Labels View</Button>
+        </div>
 
-              <Button className="w-full ant-btn-check" disabled={currentFileName == ""} onClick={uploadProcessedFile}>Store</Button>
-          </div>
+        <Row gutter={24}>
+            <Col xl={14} lg={14} md={14} sm={24} xs={24} style={{ marginBottom: 24}} >
+                <Card bordered={false} className="h-full cursor-default">
 
-            <TextArea
-              className='h-full'
-              showCount
-              autoSize={{minRows: 25, maxRows: 25}}
-              style={{ height: '80vh', marginBottom: 24 }}
-              placeholder="欲標記內容"
-              value={currentFileContentDisplay}
-              onSelect={handleTextSelection} />
+                    <div className='grid gap-2 mb-4 grid-cols-8'>
+                        <Pagination 
+                            className='w-full mb-4 col-span-2' 
+                            simple 
+                            current={currentPage}  
+                            total={contentList.length} 
+                            onChange={(page, pageSize) => changePage(page)}  
+                            pageSize={1}
+                            defaultCurrent={1} /> 
+
+                        <Select 
+                            className='col-span-3' 
+                            placeholder="Select the File Name"
+                            optionFilterProp="children"
+                            filterOption={labelValue_selectedFilterOption}
+                            options={filesNameList}
+                            onChange={chooseTheFile}
+                            value={currentFileName}
+                            loading={isLoading} 
+                            showSearch />
+
+                        <Select 
+                            className='col-span-2' 
+                            placeholder="Select the Fields Name"
+                            optionFilterProp="children"
+                            filterOption={labelValue_selectedFilterOption}
+                            options={fileFieldsList}
+                            onChange={(e) => { 
+                                setCurrentContentFieldKey(e);
+                                setCurrentFileContentVisual((contentList[readTheCurrentPage(currentPage)] as any)[e]);
+                            }}
+                            value={currentContentFieldKey}
+                            loading={isLoading} 
+                            showSearch />
+
+                        <Button 
+                            className='col-span-1 ant-btn-store'
+                            onClick={uploadProcessedFile} 
+                            disabled={currentFileName == null || contentList.length === 0}>
+                            Store </Button>
+
+                    </div>
+
+                    <TextArea
+                        className='h-full'
+                        showCount
+                        // autoSize={{minRows: 21, maxRows: 21}}
+                        style={{ height: '80vh', marginBottom: 24, fontSize: textAreaPx + 'px' }}
+                        placeholder="欲標記內容"
+                        value={breakSentence_CurrentFileContentVisual()}
+                        onSelect={handleTextSelection} />
+
+                    <div className='grid grid-cols-11 gap-2'>
+                        <div className='col-span-2' style={{ display: 'flex', alignItems: "center"}}> 是否自動斷句：<Switch defaultChecked onChange={(e) => setIsBreakSentence(e)} /> </div>
+                        <div className='col-span-5' style={{ display: 'flex', alignItems: "center"}}> 字體大小： <InputNumber addonAfter="px" value={textAreaPx} onChange={(e:number|null) => {setTextAreaPx(e)}} /> </div>
+                    </div>
+                    
+
+                </Card>
+            </Col>
+
+            <Col xl={10} lg={10} md={10} sm={24} xs={24} style={{ marginBottom: 24, maxHeight: '100vh', overflowY: 'auto' }}>
             
-          </Card>
-        </Col >
+                {isVisible[0] && <>
+                    <Card bordered={false} className="w-full cursor-default grid gap-4 mb-4"  title={"Actions"} 
+                        extra={<Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(0)}></Button>}>                
 
-        <Col xl={10} lg={10} md={10} sm={24} xs={24} style={{ marginBottom: 24, height: '80vh', overflowY: 'auto' }}>
+                        <p className='text-xl mb-4'>Operation File</p>
+                        <div className='grid gap-2 mb-4 grid-cols-3'>
+                            <Button 
+                                className="w-full ant-btn-check"  
+                                icon={<DownloadOutlined />} 
+                                disabled={!currentFileName}
+                                onClick={downloadProcessedFile}> 
+                                <span className="btn-text">Down</span> 
+                            </Button>
+                            <Button 
+                                className="w-full ant-btn-delete"  
+                                icon={<DeleteOutlined />} 
+                                disabled={!currentFileName}
+                                onClick={ () => {
+                                setModalSetting((prevState: ModalFormatterType) => ({
+                                    ...prevState,
+                                    isOpen: true,
+                                    title: "刪除",
+                                    ok: {
+                                        onClick: async () => { handleDeleteFile(); }
+                                    },
+                                    icon: <DeleteOutlined />,
+                                    confirmLoading: false,
+                                    message: "你確定要刪除這個檔案嗎?"
+                                }))
+                            }} > 
+                                <span className="btn-text">Delete</span> 
+                            </Button>
 
-          {/* 選擇檔案 + 上傳 */}
-          {isVisible[0] && <>
-            <Card bordered={false} className="w-full cursor-default grid gap-4 mb-4"  title={"Uploads"} 
-              extra={<Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(0)}></Button>}>
-                <div className='grid grid-cols-4 gap-4'>
-                    <Select className='w-full mb-4 col-span-2' 
-                      placeholder="Select the File Name"
-                      optionFilterProp="children"
-                      filterOption={fileName_filterOption}
-                      options={fileNameList}
-                      onChange={chooseTheFile}
-                      value={currentFileName}
-                      showSearch
-                      loading={isLoading}
-                      />
-                    <Button className="w-full ant-btn-check"  icon={<DownloadOutlined />} onClick={downloadProcessedFile}> 
-                      <span className="btn-text">Down</span> 
-                    </Button>
-                    <Button 
-                      className="w-full ant-btn-delete"  
-                      icon={<DeleteOutlined />} 
-                      disabled={!currentFileName}
-                      onClick={ () => {
-                        setModalSetting((prevState: ModalFormatter) => ({
-                          ...prevState,
-                          isOpen: true,
-                          title: "刪除",
-                          ok: {
-                            onClick: async () => {
-                              await deleteFile();
-                              closeModal();
-                            }
-                          },
-                          icon: <DeleteOutlined />,
-                          confirmLoading: false,
-                          message: "你確定要刪除這個檔案嗎?"
-                        }))
-                    }} > 
-                      <span className="btn-text">Delete</span> 
-                    </Button>
-                </div>
-                <Upload maxCount={1} {...uploadFileProps}  >
-                  <Button type="dashed" className="w-full" danger icon={<UploadOutlined />}> Click to Upload </Button>
-                  {/* // ! 目前有名字太長跑板問題  */}
-                </Upload>
-            </Card>
-          </> }
-
-          {/* 選擇欄位 */}
-          { isVisible[1] && <>
-            <Card bordered={false} title="Fields" className="w-full cursor-default grid gap-4 mb-4"
-              extra={<Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(1)}></Button>}>
-            
-              <Radio.Group defaultValue={fileContentFields[0] || ""}
-                  onChange={(e) => {
-                      const selectedKey = e.target.value;
-                      setFileContentKey(selectedKey);
-                      setCurrentFileContentDisplay(currentFileContentJson[selectedKey]);
-                      
-                  }}>
-                  {
-                      fileContentFields.map((field, index) => (
-                          <Radio.Button key={index} value={field}>
-                              {field.charAt(0).toUpperCase() + field.slice(1)}
-                          </Radio.Button>
-                      ))
-                  }
-              </Radio.Group>
-           
-            </Card>
-           </> }
-
-          {/* 新增欄位 */}
-          { isVisible[2] && <>
-            <Card bordered={false} title="Add Label" className="w-full cursor-default grid gap-4 mb-4" 
-              extra={<p>{currentSelectedNewLabel} <Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(2)}></Button></p>}>
-              
-                <Form form={addLabelForm} name="dynamic_label_form" >
-                  <Form.List name="labels">
-                    {(labelFields) => (
-                      <div style={{ display: 'flex', rowGap: 16, flexDirection: 'column' }}>
-                        {showLabelList()}
-
-                        <div className='grid grid-cols-2 gap-4'>
-                          <Input addonBefore="name" value={newLabel} onChange={handleNewLabelChange} />
-                          <Button type="dashed" onClick={() => {addItem(newLabel)}} block disabled={!newLabel} htmlType="submit" > 
-                            + Add Item 
-                          </Button>
+                            <Upload maxCount={1} {...uploadFileProps}  >
+                                <Button type="dashed" className="w-full ant-btn-action" icon={<UploadOutlined />}> <span className="btn-text">Upload File </span> </Button>
+                            </Upload>
                         </div>
-                      </div>
-                    )}
-                  </Form.List>
 
-                  <Form.Item noStyle shouldUpdate >
-                    {() => (
-                      <Typography>
-                        <pre>{JSON.stringify(labelFields, null, 2)}</pre>
-                      </Typography>
-                    )}
-                  </Form.Item>
+                        <p className='text-xl mb-4'>Regular Expression</p>
+                        <div className='grid gap-2 mb-4 grid-cols-5'>
+                            <Input 
+                                className='w-full col-span-4'
+                                addonBefore="/" addonAfter="/g"
+                                value={REFormula} onChange={handleREFormulaChange} />
+                            <Button className="w-full ant-btn-action" onClick={handleReAction} icon={<MonitorOutlined />} 
+                                    disabled={currentFileName == null || contentList.length === 0 || currentSelectedLabel === ""}> 
+                                <span className="btn-text" > 正規化 </span> 
+                            </Button>
+                        </div>
+                        
+                        <p className='text-xl mb-4'>GPT</p>
+                        <div className='grid gap-2 mb-4 grid-cols-2'>
+                            <Button className="w-full ant-btn-action mb-4" onClick={handleGptAction}
+                                disabled={currentFileName == null || contentList.length === 0} >GPT搜索(當前頁面)</Button>
+                            <Button className="w-full ant-btn-all_gpt" onClick={handleGptActionAll}
+                                disabled={currentFileName == null || contentList.length === 0} >GPT搜索(全部)</Button>
+                        </div>
+                    
+                    </Card>
+                </>}
 
-                </Form>
-            </Card>
-          </> }
 
-          { isVisible[3] && <>
-            <Card bordered={false} title="Regular Expression" className="w-full cursor-default grid gap-4 mb-4"
-              extra={<Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(3)}></Button>}>
+                {isVisible[1] && <>
+                    <Card bordered={false} className="w-full cursor-default grid gap-4 mb-4"  title={"Labels Checked"} 
+                        extra={ <div> 
+                                    <Switch className='switch-checkedAll' unCheckedChildren="關閉鎖定" checkedChildren="鎖定選擇"  onChange={handleLockingCheckedAll} /> 
+                                    <Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(1)}></Button>
+                                </div>}>                
 
-                <div className='grid gap-2 mb-4 grid-cols-5'>
-                  <Input 
-                    className='w-full mb-4 col-span-4'
-                    addonBefore="/" addonAfter="/g" value={REFormula} onChange={handleREFormulaChange}/>
-                  <Button className="w-full ant-btn-action" 
-                    disabled={ fileContentKey == "" || fileContentKey == undefined || currentFileName == undefined || currentFileName == "" || currentSelectedNewLabel == "" } 
-                    onClick={reAction}>Action</Button>
-                </div>
-                {actionLoading_RE && <Progress percent={actionLoading_Progress} />}
-            </Card>
-           </> }
+                        <Checkbox 
+                            className='mb-4'
+                            indeterminate={processLabelCheckedList.length > 0 && processLabelCheckedList.length < processLabelOptions.length} 
+                            checked={processLabelOptions.length === processLabelCheckedList.length}
+                            onChange={handleCheckAllChange}
+                            disabled={isLockingCheckedAll} >
+                            Check all
+                        </Checkbox>
 
-           
-          { isVisible[4] && <>
-            <Card bordered={false} title="GPT - Retrieve" className="w-full cursor-default grid gap-4 mb-4"
-              extra={<Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(4)}></Button>}>
+                        <CheckboxGroup 
+                            options={processLabelOptions} 
+                            value={processLabelCheckedList} onChange={handleChangeCheckbox} />
 
-              <Button className="w-full ant-btn-action mb-4" onClick={GPTAction} disabled={!currentFileContentDisplay}>current - GPT retrieve</Button>
-              <Button className="w-full ant-btn-all_gpt" onClick={GPTAction_all} disabled={!currentFileContentDisplay}>all - GPT retrieve</Button>
+                    </Card>
+                </>}
 
-            </Card>
-           </> }
+                {isVisible[2] && <>
+                    <Card bordered={false} className="w-full cursor-default grid gap-4 mb-4"  title={"Add Extraction Label"} 
+                        extra={<Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(2)}></Button>}>  
+                            <div className='grid grid-cols-2 gap-4'>
+                                <Input value={newExtractionLabel} onChange={(e) => {setNewExtractionLabel(e.target.value)}} addonBefore="new Label"/>
+                                <Button type="dashed" onClick={() => addExtractionLabel()} disabled={!currentFileName} > 
+                                    + Add Item 
+                                </Button>
+                            </div>
+                    </Card>
+                </>}
 
-        </Col>
+                {isVisible[3] && <>
+                    <Card id={'extraction-labels-card'} bordered={false} className="w-full cursor-default grid gap-4 mb-4"  title={"Extraction Labels"}
+                     
+                        extra={ <div style={{display: 'flex', alignItems: 'center'}}> 
+                                    <p>選取：</p> <p className='p-current-dele' onClick={()=>{setCurrentSelectedLabel("")}}>{currentSelectedLabel}</p> 
+                                    <Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(3)}></Button> 
+                                </div> } 
+                        style={{maxHeight: '60vh', overflowY: 'auto'}}>  
 
-      </Row>
+                        <Form form={extraction_label_form} name="dynamic_label_form_edit" >
+                            <Form.List name="labels">
+                                {(currentProcessedFields) => (
+                                    <div style={{ display: 'flex', rowGap: 16, flexDirection: 'column' }}>
+                                        {editFieldsLabelTemplate()}
+                                    </div>
+                                )}
+                            </Form.List>      
+                        </Form>
+                    </Card>
+                </>}
 
-      <Modal 
-        open={modalSetting.isOpen} 
-        onCancel={modalSetting.cancel.onClick} 
-        title= {<> {modalSetting.icon} {modalSetting.title}</>}
-        okButtonProps={{className: "ant-btn-check"}}
-        onOk={modalSetting.ok.onClick}
-      >
-        {modalSetting.message}
-      </Modal>
+                {isVisible[4] && <>
+                    <Card bordered={false} className="w-full cursor-default grid gap-4 mb-4"  title={"Labels View"} 
+                        extra={<Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(4)}></Button>}
+                        style={{maxHeight: '60vh', overflowY: 'auto'}}>  
 
-      {contextHolder}
+                        <Form form={extraction_label_form} name="dynamic_label_form_typography" >
+                            
+                            <Form.Item noStyle shouldUpdate>
+                                {() => (
+                                <Typography>
+                                    <pre>{JSON.stringify(currentProcessedFields.filter(field => processLabelCheckedList.includes(field.name)), null, 2)}</pre>
+                                </Typography>
+                                )}
+                            </Form.Item>
+
+                        </Form>
+                    </Card>
+                </>}
+
+            </Col>
+        </Row>
+
+        {/* 以下是呼叫才會跳出來的部分 */}
+        <Modal 
+            open={modalSetting.isOpen} 
+            onCancel={modalSetting.cancel.onClick} 
+            title= {<> {modalSetting.icon} {modalSetting.title}</>}
+            okButtonProps={{className: "ant-btn-check"}}
+            onOk={modalSetting.ok.onClick}
+        >
+            {modalSetting.message}
+        </Modal>
+
+        {contextHolder}
 
     </Spin>
-  );
+    );
 };
 
 export default labelData;

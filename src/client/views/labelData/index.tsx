@@ -93,6 +93,7 @@ const labelData = () => {
     const [filesNameList, setFilesNameList] = useState<SelectType[]>([]);
     const [currentFileContentVisual, setCurrentFileContentVisual] = useState<string>("");
     const [isBreakSentence, setIsBreakSentence] = useState<boolean>(true);
+    const [isAutoSave, setIsAutoSave] = useState<boolean>(false);
     const breakSentence_CurrentFileContentVisual = () => {
 
         if (isBreakSentence == false)
@@ -142,7 +143,7 @@ const labelData = () => {
     const [processLabelCheckedList, setProcessLabelCheckedList] = useState<CheckboxValueType[]>([]);
     const [processLabelOptions, setProcessLabelOptions] = useState<string[]>([]);
     const [newExtractionLabel, setNewExtractionLabel] = useState<string>("");
-    const [isLockingCheckedAll, setIsLockingCheckedAll] = useState<boolean>(false); // TODO: 改成鎖定目前選擇
+    const [isLockingCheckedAll, setIsLockingCheckedAll] = useState<boolean>(false);
     const [REFormula, setReFormula] = useState<string>("");
     const [textAreaPx, setTextAreaPx] = useState<number | null>(18);
 
@@ -165,17 +166,15 @@ const labelData = () => {
 
     // ----- API -> 讀取 processed 的內容
     const fetchProcessedFileContent = async (fileName: string) => {
-
         setIsLoading(true); 
+    
         const request = {
-            fileName: fileName as string,
-        }
-
-        defaultHttp.post(processDataRoutes.fetchUploadsProcessedFileName, request, {
-            headers: storedHeaders()
-        })
-        .then((response) => {
-
+            fileName: fileName,
+        };
+    
+        try {
+            const response = await defaultHttp.post(processDataRoutes.fetchUploadsProcessedFileName, request, { headers: storedHeaders() });
+    
             // @ 擷取所有欄位名稱(除了 processed)
             const keysWithoutProcessed = Object.keys(response.data[0]).filter(key => key !== 'processed');
             const formattedKeys = keysWithoutProcessed.map(key => ({
@@ -185,7 +184,7 @@ const labelData = () => {
             setFileFieldsList(formattedKeys)
             setCurrentContentFieldKey(formattedKeys[0].value)
             setCurrentFileContentVisual(response.data[0][formattedKeys[0].value])
-
+    
             // @ 抓取 content, processed 內容
             setContentList(response.data);
             if (response?.data?.[readTheCurrentPage(currentPage)]?.processed) {
@@ -197,26 +196,17 @@ const labelData = () => {
                     item.name
                 ));
                 setProcessLabelOptions(processedNameList);
-
-                // // @ 確認是否要鎖定
-                // if (isLockingCheckedAll) {
-                //     // setProcessLabelCheckedList(processedNameList);
-                // }
-                // else {
-                //     // @ 查看內容有重複欄位顯示在 CheckedList.
-                //     const filteredList = processedNameList.filter((item:string[]) => {
-                //         return response.data[0][formattedKeys[0].value].includes(item);
-                //     });
-                //     setProcessLabelCheckedList(filteredList);
-                // }
                 setNewExtractionLabel("");
             }
-        })
-        .catch((error) => {
+    
+            setNewExtractionLabel("");
+        } catch (error) {
             handleErrorResponse(error);
-        }).finally(() => { setIsLoading(false); });
+        } finally {
+            setIsLoading(false);
+        }
     }
-
+    
     // ----- API -> 存擋
     const uploadProcessedFile = async () => {
 
@@ -311,51 +301,44 @@ const labelData = () => {
 
     }
 
-
     // ----- API -> 增加欄位
     const addExtractionLabel_all = async () => {
-
         setIsLoading(true);
-
+    
         const request = {
             fileName: currentFileName,
-            content:contentList,
+            content: contentList,
             newLabel: newExtractionLabel
-        }
-
-        defaultHttp.post(processDataRoutes.addExtractionLabel_all, request, {
-            headers: storedHeaders()
-        })
-        .then((response) => {  
-            // setContentList(response.data)
+        };
+    
+        try {
+            const response = await defaultHttp.post(processDataRoutes.addExtractionLabel_all, request, { headers: storedHeaders() });
             fetchProcessedFileContent(currentFileName || "");
-        })
-        .catch((error) => {
+        } catch (error) {
             handleErrorResponse(error);
-        }).finally(() => {
+        } finally {
             setIsLoading(false);
-        });
+        }
     }
 
     // ----- API -> 刪除欄位
     const removeLabel_all = async (labelToRemove: string) => {
-        
         setIsLoading(true);
         const request = {
             fileName: currentFileName,
-            content:contentList,
+            content: contentList,
             labelToRemove: labelToRemove
-        }
-        defaultHttp.post(processDataRoutes.removeLabel_all, request, { headers: storedHeaders() })
-        .then((response) => {
-        })
-        .catch((error) => {
+        };
+    
+        try {
+            const response = await defaultHttp.post(processDataRoutes.removeLabel_all, request, { headers: storedHeaders() });
+            // 处理响应
+        } catch (error) {
             handleErrorResponse(error);
-        }).finally(() => {
+        } finally {
             setIsLoading(false);
-        });
+        }
     }
-
 
     // -------------------------------------------------- Other Setting.
     
@@ -451,7 +434,10 @@ const labelData = () => {
             setProcessLabelCheckedList(filteredList);
         }
 
-        uploadProcessedFile();
+        if (isAutoSave) {
+            uploadProcessedFile();
+        }
+
         
     }
 
@@ -481,7 +467,6 @@ const labelData = () => {
         }
 
         addExtractionLabel_all();
-        setIsLoading(false);
     }
 
     // ----- Filter -> 選擇檔案 
@@ -696,7 +681,6 @@ const labelData = () => {
 
             updateProcessedToContent(updatedProcessedFields);   // @ 更新整個檔案
             removeLabel_all(labelName);
-            setIsLoading(false)
         };
 
         const handleClean = (indexToClean: number, labelName:string) => {
@@ -763,6 +747,19 @@ const labelData = () => {
             navigate(webRoutes.labelData);
         }
     }, [navigate, storedAccount]);
+    
+    useEffect(() => {
+    
+        const interval = setInterval(() => {
+            if (currentFileName && currentFileContentVisual && !isLoading) {
+                uploadProcessedFile()
+            }
+        }, 1000 * 60 * 10); // 每隔3000毫秒（即3秒）執行一次
+    
+        return () => clearInterval(interval); // 清除間隔，防止記憶體洩漏
+    
+    }, [currentFileName, currentFileContentVisual, isLoading]); // 空依賴數組意味著這個效果只會在組件掛載時運行一次
+    
 
     return (
     <Spin spinning={isLoading} tip="Loading...">
@@ -836,6 +833,8 @@ const labelData = () => {
                     <div className='grid grid-cols-11 gap-2'>
                         <div className='col-span-2' style={{ display: 'flex', alignItems: "center"}}> 是否自動斷句：<Switch defaultChecked onChange={(e) => setIsBreakSentence(e)} /> </div>
                         <div className='col-span-5' style={{ display: 'flex', alignItems: "center"}}> 字體大小： <InputNumber addonAfter="px" value={textAreaPx} onChange={(e:number|null) => {setTextAreaPx(e)}} /> </div>
+                        <div className='col-span-2'></div>
+                        <div className='col-span-2' style={{ display: 'flex', alignItems: "center"}}> 是否自動儲存：<Switch defaultChecked onChange={(e) => setIsAutoSave(e)} /> </div>
                     </div>
                     
 
