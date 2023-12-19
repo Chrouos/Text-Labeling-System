@@ -450,6 +450,8 @@ const labelData = () => {
             });
             setProcessLabelCheckedList(filteredList);
         }
+
+        uploadProcessedFile();
         
     }
 
