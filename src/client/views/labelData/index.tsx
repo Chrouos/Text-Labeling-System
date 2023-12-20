@@ -332,6 +332,7 @@ const labelData = () => {
     
         try {
             const response = await defaultHttp.post(processDataRoutes.removeLabel_all, request, { headers: storedHeaders() });
+            fetchProcessedFileContent(currentFileName || "");
             // 处理响应
         } catch (error) {
             handleErrorResponse(error);
@@ -661,23 +662,11 @@ const labelData = () => {
 
         const handleDelete = (indexToDelete: number, labelName:string) => {
             setIsLoading(true)
-
             
             if (currentSelectedLabel === labelName) {
-                console.log(currentSelectedLabel, labelName)
                 setCurrentSelectedLabel("");
             }
 
-            const updatedProcessedFields = currentProcessedFields.filter((_, index) => index !== indexToDelete);
-            const updateCheckedList = processLabelCheckedList.filter((name, index) => name !== labelName);
-            const updateProcessLabelOptions = processLabelOptions.filter((name, index) => name !== labelName);
-
-            setCurrentProcessedFields(updatedProcessedFields); 
-            setProcessLabelOptions(updateProcessLabelOptions);
-            setProcessLabelCheckedList(updateCheckedList);
-
-
-            updateProcessedToContent(updatedProcessedFields);   // @ 更新整個檔案
             removeLabel_all(labelName);
         };
 
@@ -721,7 +710,20 @@ const labelData = () => {
                                         className='ant-btn-icon' 
                                         onClick={(e) => {
                                             e.stopPropagation(); // 阻止事件繼續傳播
-                                            handleDelete(originalIndex, originalField.name); }}>
+                                            // handleDelete(originalIndex, originalField.name); 
+                                            setModalSetting((prevState: ModalFormatterType) => ({
+                                                ...prevState,
+                                                isOpen: true,
+                                                title: "刪除",
+                                                ok: {
+                                                    onClick: async () => { handleDelete(originalIndex, originalField.name); closeModal();  }
+                                                },
+                                                icon: <DeleteOutlined />,
+                                                confirmLoading: false,
+                                                message: `你確定要刪除這個欄位（全部） ${originalField.name} 嗎?`
+                                            }))
+                                        
+                                        }}>
                                         <DeleteOutlined />
                                     </Button>
                                 </div>
