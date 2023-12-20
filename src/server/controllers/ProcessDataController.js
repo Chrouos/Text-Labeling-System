@@ -335,15 +335,11 @@ exports.addExtractionLabel_all = async (req, res) => {
             // 檢查 account 是否存在，並且不是 admin
             processedDirectory = path.join(__dirname, '..', 'uploads', 'processed', account);
             // @ 確認檔案存在
-            if (!fs.existsSync(processedDirectory)) { 
-                fs.mkdirSync(processedDirectory, { recursive: true }); 
-            }
+            if (!fs.existsSync(processedDirectory)) {  fs.mkdirSync(processedDirectory, { recursive: true });  }
         } else {
             // 如果 account 不存在或是 admin，則使用預設路徑
             processedDirectory = path.join(__dirname, '..', 'uploads', 'processed');
         }
-
-        
 
         // @ 轉換格式
         const contentData = req.body.content; 
@@ -366,7 +362,7 @@ exports.addExtractionLabel_all = async (req, res) => {
         const filePath = path.join(processedDirectory, req.body.fileName);
         fs.writeFileSync(filePath, formattedData, 'utf8');
 
-        res.status(200).send(req.body);
+        res.status(200).send(formattedData);
     } catch (error) {
         res.setHeader('Content-Type', 'text/plain; charset=utf-8');
         res.status(500).send(`[addExtractionLabel_all] Error : ${error.message || error}`);

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import BasePageContainer from '../../components/layout/PageContainer';
 import {
   Card,
@@ -19,6 +19,9 @@ import {
 import { message } from 'antd';
 import type { UploadProps } from 'antd';
 import type { UploadFile } from 'antd/es/upload/interface';
+import update from "immutability-helper";
+import { DragCard } from "./DragCard";
+
 import { UploadOutlined, CheckOutlined, DeleteOutlined, CloseOutlined, DownloadOutlined, DownOutlined, UpOutlined, ClearOutlined, MonitorOutlined} from '@ant-design/icons';
 import Highlighter from "react-highlight-words";
 
@@ -67,7 +70,7 @@ const labelData = () => {
     const storedAccount = sessionStorage.getItem('account');
 
     const [isLoading, setIsLoading] = useState(false);
-    const [isVisible, setIsVisible] = useState<boolean[]>([false, true, false, true, false]);
+    const [isVisible, setIsVisible] = useState<boolean[]>([false, true, false, true, false, true]);
     const chooseIsVisible = (index: number) => {
         return (event: React.MouseEvent<HTMLElement>) => {
             const newIsVisible = [...isVisible];
@@ -217,8 +220,7 @@ const labelData = () => {
         }
 
         defaultHttp.post(processDataRoutes.uploadProcessedFile, request, {
-            headers: storedHeaders()
-        })
+            headers: storedHeaders() })
         .then((response) => {
 
 
@@ -227,7 +229,6 @@ const labelData = () => {
             handleErrorResponse(error);
         }).finally(() => { setIsLoading(false); });
     }
-
 
     // ----- API -> 下載檔案
     const downloadProcessedFile = async () => {
@@ -657,6 +658,36 @@ const labelData = () => {
         
     }
 
+    // ! ------------------------------------------------------------------------------------------ handle ->
+    const moveCard = useCallback(
+        (dragIndex: number, hoverIndex: number) => {
+          setProcessLabelOptions((prevOptions: string[]) =>
+            update(prevOptions, {
+              $splice: [
+                [dragIndex, 1],
+                [hoverIndex, 0, prevOptions[dragIndex]],
+              ],
+            })
+          );
+        },
+        [processLabelOptions]
+      );
+  
+      const renderCard = useCallback(
+        (card: { id: number; text: string }, index: number) => {
+          return (
+            <DragCard
+              key={card.id}
+              index={index}
+              id={card.id}
+              text={card.text}
+              moveCard={moveCard}
+            />
+          );
+        },
+        []
+      );
+
     // ----- Template -> 編輯欄位
     const editFieldsLabelTemplate = () => {
 
@@ -904,6 +935,25 @@ const labelData = () => {
                     </Card>
                 </>}
 
+                {isVisible[5] && <>
+                    <Card bordered={false} className="w-full cursor-default grid gap-4 mb-4"  title={"Default Label Sort"} 
+                        extra={<Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(5)}></Button>}
+                        style={{maxHeight: '60vh', overflowY: 'auto'}}>  
+
+                        {/* <div>
+                                {processLabelOptions.map((option, index) => (
+                                    <DragCard
+                                    key={option}
+                                    index={index}
+                                    id={option}
+                                    text={option}
+                                    moveCard={moveCard}
+                                    />
+                                ))}
+                                </div> */}
+
+                    </Card>
+                </>}
 
                 {isVisible[1] && <>
                     <Card bordered={false} className="w-full cursor-default grid gap-4 mb-4"  title={"Labels Checked"} 
@@ -979,6 +1029,8 @@ const labelData = () => {
                         </Form>
                     </Card>
                 </>}
+
+                
 
             </Col>
         </Row>
