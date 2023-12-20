@@ -22,7 +22,7 @@ import type { UploadFile } from 'antd/es/upload/interface';
 import { UploadOutlined, CheckOutlined, DeleteOutlined, CloseOutlined, DownloadOutlined, DownOutlined, UpOutlined, ClearOutlined, MonitorOutlined} from '@ant-design/icons';
 import Highlighter from "react-highlight-words";
 
-import { LabelTable } from './labelTable';
+import { DragCard } from './DragCard';
 
 import { webRoutes } from '../../routes/web';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
@@ -1002,14 +1002,14 @@ const labelData = () => {
         </Modal>
 
         <Modal 
-            open={true} 
+            open={false} 
             title= {<> Label Table View </>}
             okButtonProps={{className: "ant-btn-check"}} 
             onCancel={(e) => setIsTableModalOpen(false)}
             onOk={(e) => setIsTableModalOpen(false)}
             >
             
-            { <LabelTable items={processLabelOptions} /> }
+            { <DragCard items={processLabelOptions} /> }
         </Modal>
 
         {contextHolder}

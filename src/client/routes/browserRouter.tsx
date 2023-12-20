@@ -7,7 +7,9 @@ import Layout from '../components/layout';
 import ProgressBar from '../components/loader/progressBar';
 import loadable from '@loadable/component';
 
+import { Navigate } from 'react-router-dom';
 import { webRoutes } from './web';
+import React, { ComponentType, FC } from 'react';
 
 const errorElement = <ErrorPage />;
 const fallbackElement = <ProgressBar />;
@@ -21,6 +23,23 @@ const CompareData = loadable(() => import('../views/compareData'), {
 const Login = loadable(() => import('../views/login'), {
   fallback: fallbackElement,
 });
+
+// 高階組件，用於檢查存儲賬號
+const withAuth = <P extends object>(Component: ComponentType<P>): FC<P> => {
+  return (props: P) => {
+    const storedAccount = sessionStorage.getItem('account');
+    if (!storedAccount) {
+      // 如果沒有賬號，重定向到登入頁面
+      return <Navigate to={webRoutes.login} replace />;
+    }
+    // 否則渲染傳入的組件
+    return <Component {...props} />;
+  };
+};
+
+// 使用高階組件包裝您的頁面組件
+const LabelDataProtected = withAuth(LabelData);
+const CompareDataProtected = withAuth(CompareData);
 
 const storedAccount = sessionStorage.getItem('account');
 
@@ -38,7 +57,7 @@ export const browserRouter = createBrowserRouter([
     errorElement: errorElement,
   },
 
-  {
+  { 
     element: (
       <Layout />
     ),
@@ -46,11 +65,11 @@ export const browserRouter = createBrowserRouter([
     children: [
       {
         path: webRoutes.labelData,
-        element: <LabelData />,
+        element: <LabelDataProtected />,
       },
       {
         path: webRoutes.compareData,
-        element: <CompareData />,
+        element: <CompareDataProtected />,
       },
     ],
   },
