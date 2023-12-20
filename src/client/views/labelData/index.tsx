@@ -22,15 +22,14 @@ import type { UploadFile } from 'antd/es/upload/interface';
 import { UploadOutlined, CheckOutlined, DeleteOutlined, CloseOutlined, DownloadOutlined, DownOutlined, UpOutlined, ClearOutlined, MonitorOutlined} from '@ant-design/icons';
 import Highlighter from "react-highlight-words";
 
+import { LabelTable } from './labelTable';
+
 import { webRoutes } from '../../routes/web';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { defaultHttp } from '../../utils/http';
 import { processDataRoutes } from '../../routes/api';
 import { handleErrorResponse } from '../../utils';
 import './index.css'
-import { FormItemInputContext } from 'antd/es/form/context';
-import { current } from '@reduxjs/toolkit';
-import Item from 'antd/es/list/Item';
 import type { CheckboxChangeEvent } from 'antd/es/checkbox';
 import type { CheckboxValueType } from 'antd/es/checkbox/Group';
 import { FieldNamesType } from 'antd/es/cascader';
@@ -146,6 +145,10 @@ const labelData = () => {
     const [isLockingCheckedAll, setIsLockingCheckedAll] = useState<boolean>(false);
     const [REFormula, setReFormula] = useState<string>("");
     const [textAreaPx, setTextAreaPx] = useState<number | null>(18);
+
+    // - Table Viewer
+    const [isTableModalOpen, setIsTableModalOpen] = useState<boolean>(false);
+
 
     // -------------------------------------------------- API Settings
 
@@ -921,6 +924,10 @@ const labelData = () => {
                             Check all
                         </Checkbox>
 
+                        <Button onClick={() => setIsTableModalOpen(true)}>
+                            Table View
+                        </Button>
+
                         <CheckboxGroup 
                             options={processLabelOptions} 
                             value={processLabelCheckedList} onChange={handleChangeCheckbox} />
@@ -992,6 +999,17 @@ const labelData = () => {
             onOk={modalSetting.ok.onClick}
         >
             {modalSetting.message}
+        </Modal>
+
+        <Modal 
+            open={true} 
+            title= {<> Label Table View </>}
+            okButtonProps={{className: "ant-btn-check"}} 
+            onCancel={(e) => setIsTableModalOpen(false)}
+            onOk={(e) => setIsTableModalOpen(false)}
+            >
+            
+            { <LabelTable items={processLabelOptions} /> }
         </Modal>
 
         {contextHolder}
