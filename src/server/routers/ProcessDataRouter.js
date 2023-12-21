@@ -25,6 +25,8 @@ app.post('/processData/gptRetrieve_all', processDataController.gptRetrieve_all);
 // @ FOR TRANSFORM
 app.post('/processData/formatterProcessedContent', processDataController.formatterProcessedContent);
 
+// @ FOR SORT
+app.post('/processData/uploadFileSort', processDataController.uploadFileSort);
 
 
 

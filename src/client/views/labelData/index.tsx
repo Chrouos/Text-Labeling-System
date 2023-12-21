@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import BasePageContainer from '../../components/layout/PageContainer';
+import DragSorting from '../../components/layout/dragSorting';
 import {
   Card,
   Col,
@@ -44,6 +45,8 @@ type SelectType = { value: string; label: string; };
 type ProcessedContentType = { processed?: ProcessedFieldsType[]; [key: string]: any; };
 type ProcessedFieldsType = { name: string; value: string; the_surrounding_words: string; regular_expression_match: string, regular_expression_formula: string, gpt_value: string }; // connecting change: exampleProcessedFields
 
+type SortType = { name: string; checked: boolean; };
+
 type ModalFormatterType = {
     isOpen: boolean;
     title: string;
@@ -85,7 +88,7 @@ const labelData = () => {
         message: "This is the default modal setting."
     });
     const closeModal = () => { setModalSetting((prevState: ModalFormatterType) => ({...prevState, isOpen: false})) } 
-  
+
     // - File List
     const [currentPage, setCurrentPage] = useState(1);
     const [currentFileName, setCurrentFileName] = useState<string | null>(null);
@@ -128,7 +131,7 @@ const labelData = () => {
         const fileIndex = (page > 0) ? page - 1 : 0;
         return fileIndex;
     }
-   
+
     // - Processed Content
     const [contentList, setContentList] = useState<ProcessedContentType[]>([]); 
     const [fileFieldsList, setFileFieldsList] = useState<SelectType[]>([]);
@@ -141,6 +144,7 @@ const labelData = () => {
     // - other options.
     const [processLabelCheckedList, setProcessLabelCheckedList] = useState<CheckboxValueType[]>([]);
     const [processLabelOptions, setProcessLabelOptions] = useState<string[]>([]);
+
     const [newExtractionLabel, setNewExtractionLabel] = useState<string>("");
     const [isLockingCheckedAll, setIsLockingCheckedAll] = useState<boolean>(false);
     const [REFormula, setReFormula] = useState<string>("");
@@ -149,6 +153,9 @@ const labelData = () => {
     // - Table Viewer
     const [isTableModalOpen, setIsTableModalOpen] = useState<boolean>(false);
 
+
+    const [sortOptions, setSortOptions] = useState<string[]>([]);
+    const [defaultCheck, setDefaultCheck] = useState<CheckboxValueType[]>([]);
 
     // -------------------------------------------------- API Settings
 
@@ -199,6 +206,7 @@ const labelData = () => {
                     item.name
                 ));
                 setProcessLabelOptions(processedNameList);
+                setSortOptions(processedNameList);
                 setNewExtractionLabel("");
             }
     
@@ -374,6 +382,30 @@ const labelData = () => {
         },
     };
 
+    // ----- 排序 & 預設勾選 儲存
+    const handleClickOK = () => {
+        setProcessLabelCheckedList(defaultCheck);
+
+        setIsLoading(true); 
+        const request = {
+            fileName: currentFileName,
+            content: contentList,
+            sortOptions: sortOptions,
+        }
+
+        defaultHttp.post(processDataRoutes.uploadFileSort, request, {
+            headers: storedHeaders()
+        })
+        .then((response) => {
+            if (response.status === 200) {
+                fetchProcessedFileContent(currentFileName || "");
+            }
+        })
+        .catch((error) => {
+            handleErrorResponse(error);
+        }).finally(() => { setIsLoading(false); });
+    }
+
     // ----- autoVariable -> 自動生成
     const createProcessedFields = <T extends Partial<ProcessedFieldsType>>(fields: T): ProcessedFieldsType => {
 
@@ -384,14 +416,14 @@ const labelData = () => {
             regular_expression_match: "",
             regular_expression_formula: "",
             gpt_value: "",
-          };
+        };
         
           // 使用 Object.keys 在這個示例對象上，以獲取所有的鍵
-          const defaultFields = Object.keys(exampleProcessedFields).reduce((acc, key) => {
+        const defaultFields = Object.keys(exampleProcessedFields).reduce((acc, key) => {
             acc[key as keyof ProcessedFieldsType] = "";
             return acc;
-          }, {} as ProcessedFieldsType);
-          
+        }, {} as ProcessedFieldsType);
+
         return {
             ...defaultFields,
             ...fields
@@ -432,10 +464,11 @@ const labelData = () => {
         }
         else {
             // @ 查看內容有重複欄位顯示在 CheckedList.
-            const filteredList = processLabelOptions.filter((item:string) => {
-                return contentList[indexPage][currentContentFieldKey].includes(item);
-            });
-            setProcessLabelCheckedList(filteredList);
+            // const filteredList = processLabelOptions.filter((item:string) => {
+            //     return contentList[indexPage][currentContentFieldKey].includes(item);
+            // });
+            // setProcessLabelCheckedList(filteredList);
+            setProcessLabelCheckedList(defaultCheck);
         }
 
         if (isAutoSave) {
@@ -680,6 +713,14 @@ const labelData = () => {
             setCurrentProcessedFields(updatedProcessedFields);
             setIsLoading(false)
         }
+
+        const handleCancel = (indexToCancel: number, labelName:string) => {
+            setIsLoading(true)
+            setProcessLabelCheckedList(currentList => 
+                currentList.filter(item => !(item === labelName))
+            );
+            setIsLoading(false)
+        }
         
         const handleUpdate = (indexToUpdate: number, labelName:string, newValue: string) => {
             setIsLoading(true)
@@ -709,7 +750,7 @@ const labelData = () => {
                                         value={originalField.value}
                                         onChange={(e) => handleUpdate(originalIndex, originalField.name, e.target.value)}  />
 
-                                    <Button 
+                                    {/* <Button 
                                         className='ant-btn-icon' 
                                         onClick={(e) => {
                                             e.stopPropagation(); // 阻止事件繼續傳播
@@ -725,10 +766,29 @@ const labelData = () => {
                                                 confirmLoading: false,
                                                 message: `你確定要刪除這個欄位（全部） ${originalField.name} 嗎?`
                                             }))
-                                        
                                         }}>
                                         <DeleteOutlined />
+                                    </Button> */}
+
+                                    <Button 
+                                        className='ant-btn-icon' 
+                                        onClick={(e) => {
+                                            e.stopPropagation(); // 阻止事件繼續傳播
+                                            handleClean(originalIndex, originalField.name); 
+                                        }}>
+                                        <ClearOutlined />
                                     </Button>
+
+                                    <Button 
+                                        className='ant-btn-icon' 
+                                        onClick={(e) => {
+                                            e.stopPropagation(); // 阻止事件繼續傳播
+                                            handleCancel(originalIndex, originalField.name); 
+                                        }}>
+                                        <CloseOutlined />
+                                    </Button>
+
+                                    
                                 </div>
                             </Form.Item>
                         </div>
@@ -924,8 +984,8 @@ const labelData = () => {
                             Check all
                         </Checkbox>
 
-                        <Button onClick={() => setIsTableModalOpen(true)}>
-                            Table View
+                        <Button onClick={() => setIsTableModalOpen(true)} disabled={currentFileName == null || contentList.length === 0}>
+                            Table Edit
                         </Button>
 
                         <CheckboxGroup 
@@ -1001,15 +1061,24 @@ const labelData = () => {
             {modalSetting.message}
         </Modal>
 
+        {/* 編輯欄位 */}
         <Modal 
-            open={false} 
+            open={isTableModalOpen} 
             title= {<> Label Table View </>}
             okButtonProps={{className: "ant-btn-check"}} 
             onCancel={(e) => setIsTableModalOpen(false)}
-            onOk={(e) => setIsTableModalOpen(false)}
+            onOk={(e) => {
+                setIsTableModalOpen(false);
+                handleClickOK();
+            }}
             >
             
-            { <DragCard items={processLabelOptions} /> }
+            {   <DragSorting 
+                    processLabelOptions={processLabelOptions} 
+                    setSortOptions={setSortOptions} 
+                    setDefaultCheck={setDefaultCheck} 
+                    defaultCheck={defaultCheck} /> 
+            }
         </Modal>
 
         {contextHolder}
