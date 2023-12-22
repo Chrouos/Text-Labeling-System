@@ -803,17 +803,17 @@ const labelData = () => {
         }
     }, [navigate, storedAccount]);
     
-    useEffect(() => {
+    // useEffect(() => {
     
-        const interval = setInterval(() => {
-            if (currentFileName && currentFileContentVisual && !isLoading) {
-                uploadProcessedFile()
-            }
-        }, 1000 * 60 * 10); // 每隔3000毫秒（即3秒）執行一次
+    //     const interval = setInterval(() => {
+    //         if (currentFileName && currentFileContentVisual && !isLoading) {
+    //             uploadProcessedFile()
+    //         }
+    //     }, 1000 * 60 * 10); // 每隔3000毫秒（即3秒）執行一次
     
-        return () => clearInterval(interval); // 清除間隔，防止記憶體洩漏
+    //     return () => clearInterval(interval); // 清除間隔，防止記憶體洩漏
     
-    }, [currentFileName, currentFileContentVisual, isLoading]); // 空依賴數組意味著這個效果只會在組件掛載時運行一次
+    // }, [currentFileName, currentFileContentVisual, isLoading]); // 空依賴數組意味著這個效果只會在組件掛載時運行一次
     
 
     return (
@@ -1031,7 +1031,10 @@ const labelData = () => {
                             <Form.Item noStyle shouldUpdate>
                                 {() => (
                                 <Typography>
-                                    <pre>{JSON.stringify(processedList[readTheCurrentPage(currentPage)].processed.filter(field => processLabelCheckedList.includes(field.name)), null, 2)}</pre>
+                                    <pre>{ 
+                                        Array.isArray(processedList[readTheCurrentPage(currentPage)]?.processed) &&
+                                        JSON.stringify(processedList[readTheCurrentPage(currentPage)].processed.filter(field => processLabelCheckedList.includes(field.name)), null, 2)
+                                    }</pre>
                                 </Typography>
                                 )}
                             </Form.Item>
