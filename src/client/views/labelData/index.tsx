@@ -233,6 +233,8 @@ const labelData = () => {
     
         try {
             const response = await defaultHttp.post(processDataRoutes.uploadProcessedFile, request, { headers: storedHeaders() });
+
+            messageApi.success(response.data)
         } catch (error) {
             handleErrorResponse(error);
         } finally {
@@ -887,7 +889,7 @@ const labelData = () => {
                         <div className='col-span-2' style={{ display: 'flex', alignItems: "center"}}> 是否自動斷句：<Switch defaultChecked onChange={(e) => setIsBreakSentence(e)} /> </div>
                         <div className='col-span-5' style={{ display: 'flex', alignItems: "center"}}> 字體大小： <InputNumber addonAfter="px" value={textAreaPx} onChange={(e:number|null) => {setTextAreaPx(e)}} /> </div>
                         <div className='col-span-2'></div>
-                        <div className='col-span-2' style={{ display: 'flex', alignItems: "center"}}> 是否自動儲存：<Switch onChange={(e) => setIsAutoSave(e)} /> </div>
+                        <div className='col-span-2' style={{ display: 'flex', alignItems: "center"}}> 是否自動儲存：<Switch defaultChecked onChange={(e) => setIsAutoSave(e)} /> </div>
                     </div>
                     
 
@@ -1029,7 +1031,7 @@ const labelData = () => {
                             <Form.Item noStyle shouldUpdate>
                                 {() => (
                                 <Typography>
-                                    <pre>{JSON.stringify(processedList[readTheCurrentPage(currentPage)].filter(field => processLabelCheckedList.includes(field.name)), null, 2)}</pre>
+                                    <pre>{JSON.stringify(processedList[readTheCurrentPage(currentPage)].processed.filter(field => processLabelCheckedList.includes(field.name)), null, 2)}</pre>
                                 </Typography>
                                 )}
                             </Form.Item>
