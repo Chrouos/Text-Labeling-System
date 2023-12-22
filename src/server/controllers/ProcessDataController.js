@@ -434,7 +434,7 @@ exports.uploadFileSort = async (req, res) => {
         // 存擋
         fs.writeFileSync(processedFilePath, formattedData, 'utf8');
 
-        res.status(200).send(req.body);
+        res.status(200).send("排序成功");
     } catch (error) {
         res.setHeader('Content-Type', 'text/plain; charset=utf-8');
         res.status(500).send(`[uploadFileSort] Error : ${error.message || error}`);

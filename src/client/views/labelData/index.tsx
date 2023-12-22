@@ -381,26 +381,25 @@ const labelData = () => {
     };
 
     // -v- 排序 & 預設勾選 儲存
-    const handleClickOK = () => {
-        setProcessLabelCheckedList(defaultCheck);
+    const handleClickOK = async () => {
 
-        setIsLoading(true); 
+        setIsLoading(true);
         const request = {
             fileName: currentFileName,
             sortOptions: sortOptions,
         }
+    
+        try {
+            const response = await defaultHttp.post(processDataRoutes.uploadFileSort, request, { headers: storedHeaders() });
+            if (currentFileName) fetchProcessedContent(currentFileName);
 
-        defaultHttp.post(processDataRoutes.uploadFileSort, request, {
-            headers: storedHeaders()
-        })
-        .then((response) => {
-            if (response.status === 200 && currentFileName) {
-                fetchProcessedContent(currentFileName);
-            }
-        })
-        .catch((error) => {
+            messageApi.success(response.data);
+        } catch (error) {
             handleErrorResponse(error);
-        }).finally(() => { setIsLoading(false); });
+        } finally {
+            setIsLoading(false);
+        }
+
     }
 
     // -v- autoVariable -v- 自動生成
@@ -555,6 +554,10 @@ const labelData = () => {
         setProcessedList([])
         setCurrentContentFieldKey("");
         setCurrentSelectedLabel("");
+
+        setSortOptions([]);
+        setProcessLabelOptions([]);
+        setProcessLabelCheckedList([]);
     }
 
     // -v- handle - 對要擷取內容 HighLight, 並修改相關資訊，送到 Fields Input 中
