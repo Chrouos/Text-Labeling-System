@@ -296,7 +296,7 @@ const labelData = () => {
     
             const request = { fileName: currentFileName };
             const response = await defaultHttp.post(processDataRoutes.deleteFile, request, { headers: storedHeaders() });
-            fetchFilesName();
+            await fetchFilesName();
         
             messageApi.success(response.data);
         } catch (error) {
