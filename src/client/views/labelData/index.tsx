@@ -318,7 +318,7 @@ const labelData = () => {
     
         try {
             const response = await defaultHttp.post(processDataRoutes.addExtractionLabel_all, request, { headers: storedHeaders() });
-            if (currentFileName) fetchProcessedContent(currentFileName);
+            if (currentFileName) await fetchProcessedContent(currentFileName);
 
             messageApi.success(response.data);
         } catch (error) {
@@ -339,7 +339,7 @@ const labelData = () => {
     
         try {
             const response = await defaultHttp.post(processDataRoutes.removeLabel_all, request, { headers: storedHeaders() });
-            if (currentFileName) fetchProcessedContent(currentFileName);
+            if (currentFileName) await fetchProcessedContent(currentFileName);
 
             messageApi.success(response.data);
         } catch (error) {
@@ -382,16 +382,18 @@ const labelData = () => {
 
     // -v- 排序 & 預設勾選 儲存
     const handleClickOK = async () => {
+        
+        setProcessLabelCheckedList(defaultCheck);
+        setIsLoading(true); 
 
-        setIsLoading(true);
         const request = {
             fileName: currentFileName,
             sortOptions: sortOptions,
         }
-    
+
         try {
             const response = await defaultHttp.post(processDataRoutes.uploadFileSort, request, { headers: storedHeaders() });
-            if (currentFileName) fetchProcessedContent(currentFileName);
+            if (currentFileName) await fetchProcessedContent(currentFileName);
 
             messageApi.success(response.data);
         } catch (error) {
@@ -399,7 +401,6 @@ const labelData = () => {
         } finally {
             setIsLoading(false);
         }
-
     }
 
     // -v- autoVariable -v- 自動生成
