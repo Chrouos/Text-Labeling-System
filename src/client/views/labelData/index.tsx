@@ -191,8 +191,8 @@ const labelData = () => {
                 label: key
             }));
             setFileFieldsList(formattedKeys)
-            setCurrentContentFieldKey(keysWithoutProcessed[defaultPage])                                        // = 預設當前選擇 Field Key 
-            setCurrentFileContentVisual(file_response.data[defaultPage][keysWithoutProcessed[defaultPage]])     // = 預設當前選擇 Visual
+            setCurrentContentFieldKey(currentContentFieldKey || keysWithoutProcessed[defaultPage])                                        // = 預設當前選擇 Field Key 
+            setCurrentFileContentVisual(file_response.data[defaultPage][currentContentFieldKey || keysWithoutProcessed[defaultPage]])     // = 預設當前選擇 Visual
             setContentList(file_response.data);
 
 
