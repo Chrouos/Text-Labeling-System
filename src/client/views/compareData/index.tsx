@@ -100,7 +100,7 @@ const compareData = () => {
             fileName: fileName as string,
         }
     
-        defaultHttp.post(processDataRoutes.fetchUploadsProcessedFileName, request)
+        defaultHttp.post(processDataRoutes.fetchProcessedContent, request)
         .then((response) => {
             setContentList(response.data);
             if (response?.data?.[readTheCurrentPage(currentPage)]?.processed) {
@@ -109,7 +109,7 @@ const compareData = () => {
                     value: item.name,
                     label: item.name
                 }));
-  
+
                 setProcessedFields(processedData);
                 setProcessedLabelList(processedFieldsLabel);
 

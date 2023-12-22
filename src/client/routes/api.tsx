@@ -4,9 +4,9 @@ const API_URL = getApiUrl();
 export const processDataRoutes = {
   fetchUploadsFileName: `${API_URL}/processData/fetchUploadsFileName`,
   uploadTheFile: `${API_URL}/processData/uploadTheFile`,
-  fetchFileContentJson: `${API_URL}/processData/fetchFileContentJson`,
+  fetchFileContent: `${API_URL}/processData/fetchFileContent`,
   uploadProcessedFile: `${API_URL}/processData/uploadProcessedFile`,
-  fetchUploadsProcessedFileName: `${API_URL}/processData/fetchUploadsProcessedFileName`,
+  fetchProcessedContent: `${API_URL}/processData/fetchProcessedContent`,
   downloadProcessedFile: `${API_URL}/processData/downloadProcessedFile`,
   deleteFile: `${API_URL}/processData/deleteFile`,
   addExtractionLabel_all: `${API_URL}/processData/addExtractionLabel_all`,

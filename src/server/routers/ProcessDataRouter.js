@@ -6,8 +6,8 @@ const app = Router();
 // - Action. 
 // @ CRUD 
 app.get('/processData/fetchUploadsFileName', processDataController.fetchUploadsFileName);
-app.post('/processData/fetchFileContentJson', processDataController.fetchFileContentJson);
-app.post('/processData/fetchUploadsProcessedFileName', processDataController.fetchUploadsProcessedFileName);
+app.post('/processData/fetchFileContent', processDataController.fetchFileContent);
+app.post('/processData/fetchProcessedContent', processDataController.fetchProcessedContent);
 app.post('/processData/deleteFile', processDataController.deleteFile);
 
 app.post('/processData/uploadTheFile', processDataController.uploadTheFile);

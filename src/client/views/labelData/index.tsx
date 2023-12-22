@@ -1,29 +1,26 @@
 import { useEffect, useState } from 'react';
-import BasePageContainer from '../../components/layout/PageContainer';
-import DragSorting from '../../components/layout/dragSorting';
+import DragSorting from './dragSorting';
 import {
-  Card,
-  Col,
-  Row,
-  Input,
-  Select,
-  Upload,
-  Button,
-  Form,
-  Typography,
-  Pagination,
-  Modal,
-  Spin,
-  Checkbox, Divider,
-  Switch, Space, InputNumber
+    Card,
+    Col,
+    Row,
+    Input,
+    Select,
+    Upload,
+    Button,
+    Form,
+    Typography,
+    Pagination,
+    Modal,
+    Spin,
+    Checkbox, Divider,
+    Switch, Space, InputNumber
 } from 'antd';
 import { message } from 'antd';
 import type { UploadProps } from 'antd';
 import type { UploadFile } from 'antd/es/upload/interface';
 import { UploadOutlined, CheckOutlined, DeleteOutlined, CloseOutlined, DownloadOutlined, DownOutlined, UpOutlined, ClearOutlined, MonitorOutlined} from '@ant-design/icons';
-import Highlighter from "react-highlight-words";
 
-import { DragCard } from './DragCard';
 
 import { webRoutes } from '../../routes/web';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
@@ -33,19 +30,18 @@ import { handleErrorResponse } from '../../utils';
 import './index.css'
 import type { CheckboxChangeEvent } from 'antd/es/checkbox';
 import type { CheckboxValueType } from 'antd/es/checkbox/Group';
-import { FieldNamesType } from 'antd/es/cascader';
 import { storedHeaders } from '../../utils/storedHeaders';
 
 const { TextArea } = Input;
-const { Option } = Select;
 const CheckboxGroup = Checkbox.Group;
 
 // - 定義類型
 type SelectType = { value: string; label: string; };
-type ProcessedContentType = { processed?: ProcessedFieldsType[]; [key: string]: any; };
-type ProcessedFieldsType = { name: string; value: string; the_surrounding_words: string; regular_expression_match: string, regular_expression_formula: string, gpt_value: string }; // connecting change: exampleProcessedFields
-
-type SortType = { name: string; checked: boolean; };
+type FileContentType = { [key: string]: string; };
+type ProcessedFieldsType = { name: string; value: string; the_surrounding_words: string; regular_expression_match: string, regular_expression_formula: string, gpt_value: string }; 
+type ProcessedListType = {
+    processed: ProcessedFieldsType[];
+}
 
 type ModalFormatterType = {
     isOpen: boolean;
@@ -95,7 +91,7 @@ const labelData = () => {
     const [filesNameList, setFilesNameList] = useState<SelectType[]>([]);
     const [currentFileContentVisual, setCurrentFileContentVisual] = useState<string>("");
     const [isBreakSentence, setIsBreakSentence] = useState<boolean>(true);
-    const [isAutoSave, setIsAutoSave] = useState<boolean>(false);
+    const [isAutoSave, setIsAutoSave] = useState<boolean>(true);
     const breakSentence_CurrentFileContentVisual = () => {
 
         if (isBreakSentence == false)
@@ -133,12 +129,12 @@ const labelData = () => {
     }
 
     // - Processed Content
-    const [contentList, setContentList] = useState<ProcessedContentType[]>([]); 
-    const [fileFieldsList, setFileFieldsList] = useState<SelectType[]>([]);
+    const [contentList, setContentList] = useState<FileContentType[]>([]);
+    const [fileFieldsList, setFileFieldsList] = useState<SelectType[]>([]); // = 可選擇內容
     const [currentContentFieldKey, setCurrentContentFieldKey] = useState<string>("");
 
     // - Processed Fields
-    const [currentProcessedFields, setCurrentProcessedFields] = useState<ProcessedFieldsType[]>([]); 
+    const [processedList, setProcessedList] = useState<ProcessedListType[]>([]);
     const [currentSelectedLabel, setCurrentSelectedLabel] = useState<string>(""); // = 選擇的新欄位
     
     // - other options.
@@ -159,58 +155,15 @@ const labelData = () => {
 
     // -------------------------------------------------- API Settings
 
-    // ----- API -> 抓取在 uploads/files 裡面的資料名稱
+    // -v- API - 抓取在 uploads/files 裡面的資料名稱
     const fetchFilesName = async () => {
-
-        defaultHttp.get(processDataRoutes.fetchUploadsFileName, {
-            headers: storedHeaders()
-        })
-        .then((response) => {
+        try {
+            setIsLoading(true);
+            const response = await defaultHttp.get(processDataRoutes.fetchUploadsFileName, {
+                headers: storedHeaders()
+            });
             const newFileNames = response.data.map((fileName: string) => ({ value: fileName, label: fileName }));
             setFilesNameList(newFileNames);
-        })
-        .catch((error) => {
-            handleErrorResponse(error);
-        }).finally(() => {});
-    }
-
-    // ----- API -> 讀取 processed 的內容
-    const fetchProcessedFileContent = async (fileName: string) => {
-        setIsLoading(true); 
-    
-        const request = {
-            fileName: fileName,
-        };
-    
-        try {
-            const response = await defaultHttp.post(processDataRoutes.fetchUploadsProcessedFileName, request, { headers: storedHeaders() });
-    
-            // @ 擷取所有欄位名稱(除了 processed)
-            const keysWithoutProcessed = Object.keys(response.data[0]).filter(key => key !== 'processed');
-            const formattedKeys = keysWithoutProcessed.map(key => ({
-                value: key,
-                label: key
-            }));
-            setFileFieldsList(formattedKeys)
-            setCurrentContentFieldKey(formattedKeys[0].value)
-            setCurrentFileContentVisual(response.data[0][formattedKeys[0].value])
-    
-            // @ 抓取 content, processed 內容
-            setContentList(response.data);
-            if (response?.data?.[readTheCurrentPage(currentPage)]?.processed) {
-                const processedData = response.data[readTheCurrentPage(currentPage)].processed;
-                setCurrentProcessedFields(processedData);
-                
-                // @ Options 選擇要顯示的欄位
-                const processedNameList = processedData.map((item:ProcessedFieldsType) => (
-                    item.name
-                ));
-                setProcessLabelOptions(processedNameList);
-                setSortOptions(processedNameList);
-                setNewExtractionLabel("");
-            }
-    
-            setNewExtractionLabel("");
         } catch (error) {
             handleErrorResponse(error);
         } finally {
@@ -218,29 +171,76 @@ const labelData = () => {
         }
     }
     
-    // ----- API -> 存擋
-    const uploadProcessedFile = async () => {
-
+    // -v- API - 讀取 processed 的內容
+    const fetchProcessedContent = async (fileName: string) => {
         setIsLoading(true); 
+    
         const request = {
-            fileName: currentFileName,
-            content: contentList
-        }
+            fileName: fileName,
+        };
+    
+        try {
+            const defaultPage = readTheCurrentPage(currentPage) // = 預設頁數
 
-        defaultHttp.post(processDataRoutes.uploadProcessedFile, request, {
-            headers: storedHeaders()
-        })
-        .then((response) => {
+            // @ 處理 file 內容
+            const file_response = await defaultHttp.post(processDataRoutes.fetchFileContent, request, { headers: storedHeaders() });
+
+            const keysWithoutProcessed = Object.keys(file_response.data[defaultPage]); // = file -v- 裡面的所有欄位 (LIST)
+            const formattedKeys = keysWithoutProcessed.map(key => ({
+                value: key,
+                label: key
+            }));
+            setFileFieldsList(formattedKeys)
+            setCurrentContentFieldKey(keysWithoutProcessed[defaultPage])                                        // = 預設當前選擇 Field Key 
+            setCurrentFileContentVisual(file_response.data[defaultPage][keysWithoutProcessed[defaultPage]])     // = 預設當前選擇 Visual
+            setContentList(file_response.data);
 
 
-        })
-        .catch((error) => {
+            // @ 處理 processed 內容
+            const processed_response = await defaultHttp.post(processDataRoutes.fetchProcessedContent, request, { headers: storedHeaders() });
+            if (processed_response?.data?.[defaultPage]?.processed) {
+                const currentProcessedData = processed_response.data[defaultPage].processed;
+                setProcessedList(processed_response.data)
+                
+                // @ Options 選擇要顯示的欄位
+                processOptions(currentProcessedData);
+            }
+
+            setNewExtractionLabel("");
+        } catch (error) {
             handleErrorResponse(error);
-        }).finally(() => { setIsLoading(false); });
+        } finally {
+            setIsLoading(false);
+        }
     }
 
+    // -v- void - 根據 process 讀取要顯示的 Label
+    const processOptions = (currentProcessedData: ProcessedFieldsType[]) => {
+        const processedNameList = currentProcessedData.map((item:ProcessedFieldsType) => item.name);
+        setProcessLabelOptions(processedNameList);
+        setSortOptions(processedNameList);
+    };
 
-    // ----- API -> 下載檔案
+
+    // -v- API - 存擋
+    const uploadProcessedFile = async () => {
+        setIsLoading(true);
+
+        const request = {
+            fileName: currentFileName,
+            processed: processedList
+        };
+    
+        try {
+            const response = await defaultHttp.post(processDataRoutes.uploadProcessedFile, request, { headers: storedHeaders() });
+        } catch (error) {
+            handleErrorResponse(error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // -v- API - 下載檔案
     const downloadProcessedFile = async () => {
 
         setIsLoading(true);
@@ -287,44 +287,38 @@ const labelData = () => {
         }).finally(() => { setIsLoading(false); });
     }
 
-    // ----- API -> 刪除檔案
+    // -v- API - 刪除檔案
     const deleteFile = async () => {
-        
-        setIsLoading(true);
-        const request = { fileName: currentFileName, }
-
-        defaultHttp.post(processDataRoutes.deleteFile, request, {
-            headers: storedHeaders()
-        })
-        .then((response) => { 
-
+        try {
+            setIsLoading(true);
+    
+            const request = { fileName: currentFileName };
+            const response = await defaultHttp.post(processDataRoutes.deleteFile, request, { headers: storedHeaders() });
             fetchFilesName();
-            cleanTheField();
-
-            messageApi.success("刪除成功");
-            
-        })
-        .catch((error) => {
-            handleErrorResponse(error); 
-        }).finally(() => {
+        
+            messageApi.success(response.data);
+        } catch (error) {
+            handleErrorResponse(error);
+        } finally {
             setIsLoading(false);
-        });
-
+        }
     }
+    
 
-    // ----- API -> 增加欄位
+    // -v- API - 增加欄位
     const addExtractionLabel_all = async () => {
         setIsLoading(true);
     
         const request = {
             fileName: currentFileName,
-            content: contentList,
-            newLabel: newExtractionLabel
+            labelToAdd: newExtractionLabel
         };
     
         try {
             const response = await defaultHttp.post(processDataRoutes.addExtractionLabel_all, request, { headers: storedHeaders() });
-            fetchProcessedFileContent(currentFileName || "");
+            if (currentFileName) fetchProcessedContent(currentFileName);
+
+            messageApi.success(response.data);
         } catch (error) {
             handleErrorResponse(error);
         } finally {
@@ -332,19 +326,20 @@ const labelData = () => {
         }
     }
 
-    // ----- API -> 刪除欄位
+    // -v- API - 刪除欄位
     const removeLabel_all = async (labelToRemove: string) => {
         setIsLoading(true);
+
         const request = {
             fileName: currentFileName,
-            content: contentList,
             labelToRemove: labelToRemove
         };
     
         try {
             const response = await defaultHttp.post(processDataRoutes.removeLabel_all, request, { headers: storedHeaders() });
-            fetchProcessedFileContent(currentFileName || "");
-            // 处理响应
+            if (currentFileName) fetchProcessedContent(currentFileName);
+
+            messageApi.success(response.data);
         } catch (error) {
             handleErrorResponse(error);
         } finally {
@@ -354,8 +349,9 @@ const labelData = () => {
 
     // -------------------------------------------------- Other Setting.
     
-    // ----- Props -> 上傳檔案的資料
-    const uploadFileProps: UploadProps = { name: 'file', 
+    // -v- Props 上傳檔案的資料
+    const uploadFileProps: UploadProps = { 
+        name: 'file', 
         beforeUpload: (file: UploadFile) => {
             const isTxt = file.type === 'text/plain';
             if (!isTxt) { messageApi.error(`${file.name} is not a "txt" file`); }
@@ -382,14 +378,13 @@ const labelData = () => {
         },
     };
 
-    // ----- 排序 & 預設勾選 儲存
+    // -v- 排序 & 預設勾選 儲存
     const handleClickOK = () => {
         setProcessLabelCheckedList(defaultCheck);
 
         setIsLoading(true); 
         const request = {
             fileName: currentFileName,
-            content: contentList,
             sortOptions: sortOptions,
         }
 
@@ -397,8 +392,8 @@ const labelData = () => {
             headers: storedHeaders()
         })
         .then((response) => {
-            if (response.status === 200) {
-                fetchProcessedFileContent(currentFileName || "");
+            if (response.status === 200 && currentFileName) {
+                fetchProcessedContent(currentFileName);
             }
         })
         .catch((error) => {
@@ -406,8 +401,8 @@ const labelData = () => {
         }).finally(() => { setIsLoading(false); });
     }
 
-    // ----- autoVariable -> 自動生成
-    const createProcessedFields = <T extends Partial<ProcessedFieldsType>>(fields: T): ProcessedFieldsType => {
+    // -v- autoVariable -v- 自動生成
+    const ProcessedFieldsTemplate = <T extends Partial<ProcessedFieldsType>>(fields: T): ProcessedFieldsType => {
 
         const exampleProcessedFields: ProcessedFieldsType = {
             name: "",
@@ -430,45 +425,40 @@ const labelData = () => {
         };
     }
 
-    // ----- void -> 更新 processed 到 contentList 
-    const updateProcessedToContent = (updatedProcessedFields: ProcessedFieldsType[]) => {
-        const updateCurrentProcessedFields = [...contentList];
-        const currentContent = updateCurrentProcessedFields[readTheCurrentPage(currentPage)];
-        updateCurrentProcessedFields[readTheCurrentPage(currentPage)] = {
-            ...currentContent,
-            processed: updatedProcessedFields
-        };
-        setContentList(updateCurrentProcessedFields);
-        return updateCurrentProcessedFields
+    // void - 更新 currentProcessed 到指定 index of processedList 
+    const updateCurrentProcessedToList = (updatedProcessedFields: ProcessedFieldsType[]) => {
+
+        const temp_ProcessedList = [...processedList];
+        temp_ProcessedList[readTheCurrentPage(currentPage)].processed = updatedProcessedFields;
+        setProcessedList(temp_ProcessedList);
+        return temp_ProcessedList
     }
 
     // -------------------------------------------------- Other Functions
 
-    // ----- 選擇檔案
+    // -v- 選擇檔案
     const chooseTheFile = (selectedValue: string) => {
         setCurrentFileName(selectedValue);
-        fetchProcessedFileContent(selectedValue);
+        fetchProcessedContent(selectedValue);
     }
     
-    // ----- 換頁
+    // -v- 換頁
     const changePage = (page: number) => {
         const indexPage = readTheCurrentPage(page);
 
         setCurrentPage(page);
-        setCurrentProcessedFields(contentList[indexPage]?.processed || []);
         setCurrentFileContentVisual(contentList[indexPage][currentContentFieldKey]);
 
-        // @ 確認是否全選
-        if (isLockingCheckedAll) {
-            // setProcessLabelCheckedList(processLabelOptions);
-        }
-        else {
-            // @ 查看內容有重複欄位顯示在 CheckedList.
+        // @ 若沒有鎖定
+        if (!isLockingCheckedAll) {
+            setProcessLabelCheckedList(defaultCheck); // = 按照預設
+            processOptions(processedList[indexPage].processed);
+
+            // 查看內容有重複欄位顯示在 CheckedList.
             // const filteredList = processLabelOptions.filter((item:string) => {
             //     return contentList[indexPage][currentContentFieldKey].includes(item);
             // });
             // setProcessLabelCheckedList(filteredList);
-            setProcessLabelCheckedList(defaultCheck);
         }
 
         if (isAutoSave) {
@@ -476,47 +466,47 @@ const labelData = () => {
         }
     }
 
-    // ----- 增加處理欄位
+    // -v- 增加處理欄位
     const addExtractionLabel = () => {
 
         setIsLoading(true);
 
         // @ 檢查是否重複
-        const isExisting = currentProcessedFields.some(processedField => processedField.name === newExtractionLabel );
+        const indexPage = readTheCurrentPage(currentPage);
+        const isExisting = processedList[indexPage].processed.some(processedField => processedField.name === newExtractionLabel );
         if (isExisting) {
-            messageApi.error(`${newExtractionLabel} already exists in the list.`);
+            messageApi.error(`${newExtractionLabel} 已經存在了.`);
             setIsLoading(false);
             return;
         }
 
         // @ 確認可以儲存
-        const temp_newExtractionLabel = createProcessedFields({name: newExtractionLabel});
-        setCurrentProcessedFields(prevLabelFields => [...prevLabelFields, temp_newExtractionLabel]);
-        setNewExtractionLabel("");
-
-        const allLabelOptions = [...processLabelOptions, newExtractionLabel]
-        setProcessLabelOptions(allLabelOptions);
-        
-        if (!isLockingCheckedAll){
-            setProcessLabelCheckedList([...processLabelCheckedList, newExtractionLabel])
-        }
-
         addExtractionLabel_all();
+        // const temp_newExtractionLabel = ProcessedFieldsTemplate({name: newExtractionLabel});
+        // setCurrentProcessed(prevLabelFields => [...prevLabelFields, temp_newExtractionLabel]);
+        // setNewExtractionLabel("");
+        // const allLabelOptions = [...processLabelOptions, newExtractionLabel]
+        // setProcessLabelOptions(allLabelOptions);
+        // if (!isLockingCheckedAll){
+        //     setProcessLabelCheckedList([...processLabelCheckedList, newExtractionLabel])
+        // }
+
+        
     }
 
-    // ----- Filter -> 選擇檔案 
+    // -v- Filter - 選擇檔案 
     const labelValue_selectedFilterOption = (input: string, option?: { label: string; value: string }) => {
         if (!option) { return false; }
         return (option.label ?? '').toLowerCase().includes(input.toLowerCase());
     };
 
-    // ----- handle -> Check ALL Processed Label Checkboxes
+    // -v- handle - Check ALL Processed Label Checkboxes
     const handleCheckAllChange = (e: CheckboxChangeEvent) => {
         setProcessLabelCheckedList(e.target.checked ? processLabelOptions : []);
     };
-    // ----- handle -> 若修改了 Processed Label
-    const handleChangeCheckbox = (list: CheckboxValueType[]) => {
 
+    // -v- handle -v- 若修改了 Processed Label
+    const handleChangeCheckbox = (list: CheckboxValueType[]) => {
 
         if (!isLockingCheckedAll) {
             
@@ -538,43 +528,43 @@ const labelData = () => {
         }
     };
 
-    // ----- handle -> 修改 re 公式
+    // -v- handle - 修改 re 公式
     const handleREFormulaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setReFormula(e.target.value);
     }
     
-    // ----- handle -> 鎖定全選
+    // -v- handle - 鎖定全選
     const handleLockingCheckedAll = (isLocking: boolean) => {
         setIsLockingCheckedAll(!isLockingCheckedAll);
-        if (isLocking) { 
-            // setProcessLabelCheckedList(processLabelOptions);
-        }
+        if (isLocking) {  }
     }
 
-    // ----- handle -> 刪除檔案
+    // -v- handle 刪除檔案
     const handleDeleteFile = async () => {
         await deleteFile();
         closeModal(); 
+        cleanTheField();
     }
 
-    // ----- handle -> 清楚資料
+    // -v- handle - 清除資料
     const cleanTheField = () => {
         setCurrentFileName("");
         setCurrentFileContentVisual("");
-        setCurrentProcessedFields([]);
+        setProcessedList([])
         setCurrentContentFieldKey("");
         setCurrentSelectedLabel("");
     }
 
-    // ----- handle -> 對要擷取內容 HighLight, 並修改相關資訊，送到 Fields Input 中
+    // -v- handle - 對要擷取內容 HighLight, 並修改相關資訊，送到 Fields Input 中
     const handleTextSelection = (event: React.SyntheticEvent<HTMLTextAreaElement>) => {
         const textarea = event.currentTarget;
         const selectedText = textarea.value.substring(textarea.selectionStart, textarea.selectionEnd);
+        const indexPage = readTheCurrentPage(currentPage);
         
         // @ 更新當前選擇項目欄位的 Input.
         if (selectedText) {
 
-            const updateFields = currentProcessedFields.map ( field => {
+            const updateFields = processedList[indexPage].processed.map ( field => {
                 if (field.name === currentSelectedLabel) { 
 
                     // 使用正規表示法擷取前後文
@@ -593,108 +583,106 @@ const labelData = () => {
                 return field;
             })
 
-            setCurrentProcessedFields(updateFields);
-            updateProcessedToContent(updateFields); // @ 更新整個檔案
-            
+            updateCurrentProcessedToList(updateFields)
         }
     } 
 
-    // ----- handle -> 處理「當前」頁面的 GPT
+    // -v- handle -v- 處理「當前」頁面的 GPT
     const handleGptAction = () => {
 
-        setIsLoading(true);
+        // setIsLoading(true);
 
-        const request = {
-          processedFields: currentProcessedFields,
-          currentFileContentVisual: currentFileContentVisual,
-        }
+        // const request = {
+        //     processedFields: currentProcessed,
+        //     currentFileContentVisual: currentFileContentVisual,
+        // }
     
-        defaultHttp.post(processDataRoutes.gptRetrieve, request)
-          .then((response) => {
+        // defaultHttp.post(processDataRoutes.gptRetrieve, request)
+        //     .then((response) => {
     
-            type respGPTValue = { name: string, gpt_value: string}
-            response.data.labelFields.forEach((responseItem: respGPTValue) => {
-                currentProcessedFields.forEach(processedField => {
-                    if (processedField.name === responseItem.name) {
-                        processedField.gpt_value = responseItem.gpt_value;
-                    }
-                });
-            });
+        //     type respGPTValue = { name: string, gpt_value: string}
+        //     response.data.labelFields.forEach((responseItem: respGPTValue) => {
+        //         currentProcessed.forEach(processedField => {
+        //             if (processedField.name === responseItem.name) {
+        //                 processedField.gpt_value = responseItem.gpt_value;
+        //             }
+        //         });
+        //     });
     
-            updateProcessedToContent(currentProcessedFields);
-          })
-          .catch((error) => {})
-          .finally(() => { setIsLoading(false); })
+        //     updateCurrentProcessedToList(currentProcessed);
+        // })
+        // .catch((error) => {})
+        // .finally(() => { setIsLoading(false); })
     }
 
-    // ----- handle -> 處理「全部」頁面的 GPT
+    // ----- handle -v- 處理「全部」頁面的 GPT
     const handleGptActionAll = () => {
-        setIsLoading(true);
-  
-        const request = {
-          content:  contentList,
-          contentKey: currentContentFieldKey
-        }
-  
-        defaultHttp.post(processDataRoutes.gptRetrieve_all, request)
-          .then((response) => { 
-            type responseList = []
-            type responseItem = {name: string, gpt_value: string}
-            response.data.map((responseList: responseList, responseListIndex:number) => {
-              responseList.map((responseItem: responseItem, responseItemIndex) => {
-                contentList[responseListIndex].processed?.forEach((item, index) => {
-                  if (item.name === responseItem.name){
-                    item.gpt_value = responseItem.gpt_value;
-                  }
-                })  
-              })
-            });
-            setContentList(contentList)
-          })
-          .catch((error) => {})
-          .finally(() => { setIsLoading(false); })
+        // setIsLoading(true);
+        // const request = {
+        //     content:  contentList,
+        //     contentKey: currentContentFieldKey
+        // }
+        // defaultHttp.post(processDataRoutes.gptRetrieve_all, request)
+        //   .then((response) => { 
+        //     type responseList = []
+        //     type responseItem = {name: string, gpt_value: string}
+        //     response.data.map((responseList: responseList, responseListIndex:number) => {
+        //       responseList.map((responseItem: responseItem, responseItemIndex) => {
+        //         contentList[responseListIndex].processed?.forEach((item, index) => {
+        //           if (item.name === responseItem.name){
+        //             item.gpt_value = responseItem.gpt_value;
+        //           }
+        //         })  
+        //       })
+        //     });
+        //     setContentList(contentList)
+        //   })
+        //   .catch((error) => {})
+        //   .finally(() => { setIsLoading(false); })
     }
 
-    // ----- handle -> 處理 RE 
+    // ----- handle -v- 處理 RE 
     const handleReAction = () => {
 
-        // - Loading Progress
-        setIsLoading(true);
+        // // - Loading Progress
+        // setIsLoading(true);
 
-        // - Start to Regualr Expression 
-        const rExp: RegExp = new RegExp(REFormula, 'g');
+        // // - Start to Regualr Expression 
+        // const rExp: RegExp = new RegExp(REFormula, 'g');
 
-        // @ for - 透過迴圈將每一個 contentList 的元素進行擷取
-        const newProcessedFields = contentList.map((content, index) => {
+        // // @ for - 透過迴圈將每一個 contentList 的元素進行擷取
+        // const newProcessedFields = contentList.map((content, index) => {
             
-            const preREContent = content[currentContentFieldKey]; 
-            const match = rExp.exec(preREContent);
-            if (content['processed'] ) {
-                content['processed'].forEach((field: ProcessedFieldsType) => {
+        //     const preREContent = content[currentContentFieldKey]; 
+        //     const match = rExp.exec(preREContent);
+        //     if (content['processed'] ) {
+        //         content['processed'].forEach((field: ProcessedFieldsType) => {
                     
-                    field.regular_expression_formula = REFormula;
-                    if(match) field.regular_expression_match = match[1] || "";
-                    else field.regular_expression_match = "";
+        //             field.regular_expression_formula = REFormula;
+        //             if(match) field.regular_expression_match = match[1] || "";
+        //             else field.regular_expression_match = "";
                     
-                });
-            }
+        //         });
+        //     }
 
-            return content;
-        })
+        //     return content;
+        // })
 
-        async function handleProcessAndUpload() {
-            await setContentList(newProcessedFields);
-            uploadProcessedFile();
-        }
+        // async function handleProcessAndUpload() {
+        //     await setContentList(newProcessedFields);
+        //     uploadProcessedFile();
+        // }
 
-        // - Loading Done
-        handleProcessAndUpload();
-        setIsLoading(false);
+        // // - Loading Done
+        // handleProcessAndUpload();
+        // setIsLoading(false);
         
     }
 
-    // ----- Template -> 編輯欄位
+    // ----- Template -v- 編輯欄位
     const editFieldsLabelTemplate = () => {
+
+        const indexPage = readTheCurrentPage(currentPage);
 
         const handleDelete = (indexToDelete: number, labelName:string) => {
             setIsLoading(true)
@@ -708,9 +696,9 @@ const labelData = () => {
 
         const handleClean = (indexToClean: number, labelName:string) => {
             setIsLoading(true)
-            const updatedProcessedFields = [...currentProcessedFields];
+            const updatedProcessedFields = [...processedList[indexPage].processed];
             updatedProcessedFields[indexToClean].value = '';
-            setCurrentProcessedFields(updatedProcessedFields);
+            updateCurrentProcessedToList(updatedProcessedFields)
             setIsLoading(false)
         }
 
@@ -724,12 +712,12 @@ const labelData = () => {
         
         const handleUpdate = (indexToUpdate: number, labelName:string, newValue: string) => {
             setIsLoading(true)
-            const updatedLabelFields = [...currentProcessedFields];
+            const updatedLabelFields = [...processedList[indexPage].processed];
             if (updatedLabelFields[indexToUpdate].name == labelName){
                 updatedLabelFields[indexToUpdate].value = newValue;
             }
             
-            setCurrentProcessedFields(updatedLabelFields);
+            updateCurrentProcessedToList(updatedLabelFields)
             setIsLoading(false)
         };
 
@@ -737,64 +725,66 @@ const labelData = () => {
             setCurrentSelectedLabel(labelName)
         }
 
+
         return ( <>
         
-            {currentProcessedFields.map((originalField: ProcessedFieldsType, originalIndex: number) => {
-                if (processLabelCheckedList.includes(originalField.name)) {
-                    return (
-                        <div key={originalIndex} id={`anchor-${originalField.name}`} style={{display: 'flex', alignItems: 'center'}}>
-                            <Form.Item label={<span  style={{  color: originalField.name === currentSelectedLabel ? 'red' : 'black'  }}>{originalField.name}</span>}>
-                                <div className='grid grid-cols-12 gap-4' style={{alignItems: 'center'}} onClick={() => {handleChoose(originalField.name)}}>
-                                    <TextArea 
-                                        className="col-span-10" 
-                                        value={originalField.value}
-                                        onChange={(e) => handleUpdate(originalIndex, originalField.name, e.target.value)}  />
+            {Array.isArray(processedList[indexPage]?.processed) &&
+                processedList[indexPage].processed.map((originalField: ProcessedFieldsType, originalIndex: number) => {
+                    if (processLabelCheckedList.includes(originalField.name)) {
+                        return (
+                            <div key={originalIndex} id={`anchor-${originalField.name}`} style={{display: 'flex', alignItems: 'center'}}>
+                                <Form.Item label={<span  style={{  color: originalField.name === currentSelectedLabel ? 'red' : 'black'  }}>{originalField.name}</span>}>
+                                    <div className='grid grid-cols-12 gap-4' style={{alignItems: 'center'}} onClick={() => {handleChoose(originalField.name)}}>
+                                        <TextArea 
+                                            className="col-span-10" 
+                                            value={originalField.value}
+                                            onChange={(e) => handleUpdate(originalIndex, originalField.name, e.target.value)}  />
 
-                                    {/* <Button 
-                                        className='ant-btn-icon' 
-                                        onClick={(e) => {
-                                            e.stopPropagation(); // 阻止事件繼續傳播
-                                            // handleDelete(originalIndex, originalField.name); 
-                                            setModalSetting((prevState: ModalFormatterType) => ({
-                                                ...prevState,
-                                                isOpen: true,
-                                                title: "刪除",
-                                                ok: {
-                                                    onClick: async () => { handleDelete(originalIndex, originalField.name); closeModal();  }
-                                                },
-                                                icon: <DeleteOutlined />,
-                                                confirmLoading: false,
-                                                message: `你確定要刪除這個欄位（全部） ${originalField.name} 嗎?`
-                                            }))
-                                        }}>
-                                        <DeleteOutlined />
-                                    </Button> */}
+                                        {/* <Button 
+                                            className='ant-btn-icon' 
+                                            onClick={(e) => {
+                                                e.stopPropagation(); // 阻止事件繼續傳播
+                                                // handleDelete(originalIndex, originalField.name); 
+                                                setModalSetting((prevState: ModalFormatterType) => ({
+                                                    ...prevState,
+                                                    isOpen: true,
+                                                    title: "刪除",
+                                                    ok: {
+                                                        onClick: async () => { handleDelete(originalIndex, originalField.name); closeModal();  }
+                                                    },
+                                                    icon: <DeleteOutlined />,
+                                                    confirmLoading: false,
+                                                    message: `你確定要刪除這個欄位（全部） ${originalField.name} 嗎?`
+                                                }))
+                                            }}>
+                                            <DeleteOutlined />
+                                        </Button> */}
 
-                                    <Button 
-                                        className='ant-btn-icon' 
-                                        onClick={(e) => {
-                                            e.stopPropagation(); // 阻止事件繼續傳播
-                                            handleClean(originalIndex, originalField.name); 
-                                        }}>
-                                        <ClearOutlined />
-                                    </Button>
+                                        <Button 
+                                            className='ant-btn-icon' 
+                                            onClick={(e) => {
+                                                e.stopPropagation(); // 阻止事件繼續傳播
+                                                handleClean(originalIndex, originalField.name); 
+                                            }}>
+                                            <ClearOutlined />
+                                        </Button>
 
-                                    <Button 
-                                        className='ant-btn-icon' 
-                                        onClick={(e) => {
-                                            e.stopPropagation(); // 阻止事件繼續傳播
-                                            handleCancel(originalIndex, originalField.name); 
-                                        }}>
-                                        <CloseOutlined />
-                                    </Button>
-
-                                    
-                                </div>
-                            </Form.Item>
-                        </div>
-                    );
-                }
-            })}
+                                        <Button 
+                                            className='ant-btn-icon' 
+                                            onClick={(e) => {
+                                                e.stopPropagation(); // 阻止事件繼續傳播
+                                                handleCancel(originalIndex, originalField.name); 
+                                            }}>
+                                            <CloseOutlined />
+                                        </Button>
+                                        
+                                    </div>
+                                </Form.Item>
+                            </div>
+                        );
+                    }
+                })
+            }
         
         </> )
     }
@@ -944,7 +934,8 @@ const labelData = () => {
                             </Upload>
                         </div>
 
-                        <p className='text-xl mb-4'>Regular Expression</p>
+                        {/* TODO: 之後改 */}
+                        {/* <p className='text-xl mb-4'>Regular Expression</p>
                         <div className='grid gap-2 mb-4 grid-cols-5'>
                             <Input 
                                 className='w-full col-span-4'
@@ -962,7 +953,7 @@ const labelData = () => {
                                 disabled={currentFileName == null || contentList.length === 0} >GPT搜索(當前頁面)</Button>
                             <Button className="w-full ant-btn-all_gpt" onClick={handleGptActionAll}
                                 disabled={currentFileName == null || contentList.length === 0} >GPT搜索(全部)</Button>
-                        </div>
+                        </div> */}
                     
                     </Card>
                 </>}
@@ -1009,7 +1000,7 @@ const labelData = () => {
 
                 {isVisible[3] && <>
                     <Card id={'extraction-labels-card'} bordered={false} className="w-full cursor-default grid gap-4 mb-4"  title={"Extraction Labels"}
-                     
+                    
                         extra={ <div style={{display: 'flex', alignItems: 'center'}}> 
                                     <p>選取：</p> <p className='p-current-dele' onClick={()=>{setCurrentSelectedLabel("")}}>{currentSelectedLabel}</p> 
                                     <Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(3)}></Button> 
@@ -1038,7 +1029,7 @@ const labelData = () => {
                             <Form.Item noStyle shouldUpdate>
                                 {() => (
                                 <Typography>
-                                    <pre>{JSON.stringify(currentProcessedFields.filter(field => processLabelCheckedList.includes(field.name)), null, 2)}</pre>
+                                    <pre>{JSON.stringify(processedList[readTheCurrentPage(currentPage)].filter(field => processLabelCheckedList.includes(field.name)), null, 2)}</pre>
                                 </Typography>
                                 )}
                             </Form.Item>
