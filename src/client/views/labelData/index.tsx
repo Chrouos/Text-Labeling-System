@@ -96,6 +96,7 @@ const labelData = () => {
 
         if (isBreakSentence == false)
             return currentFileContentVisual
+
     
         let sentences = [];
         let sentence = "";
@@ -186,15 +187,8 @@ const labelData = () => {
             const file_response = await defaultHttp.post(processDataRoutes.fetchFileContent, request, { headers: storedHeaders() });
 
             const keysWithoutProcessed = Object.keys(file_response.data[defaultPage]); // = file -v- 裡面的所有欄位 (LIST)
-            const formattedKeys = keysWithoutProcessed.map(key => ({
-                value: key,
-                label: key
-            }));
-            setFileFieldsList(formattedKeys)
-            setCurrentContentFieldKey(currentContentFieldKey || keysWithoutProcessed[defaultPage])                                        // = 預設當前選擇 Field Key 
-            setCurrentFileContentVisual(file_response.data[defaultPage][currentContentFieldKey || keysWithoutProcessed[defaultPage]])     // = 預設當前選擇 Visual
+            await updateFileFields(keysWithoutProcessed, file_response.data[defaultPage]);
             setContentList(file_response.data);
-
 
             // @ 處理 processed 內容
             const processed_response = await defaultHttp.post(processDataRoutes.fetchProcessedContent, request, { headers: storedHeaders() });
@@ -445,11 +439,12 @@ const labelData = () => {
     }
     
     // -v- 換頁
-    const changePage = (page: number) => {
+    const changePage = async (page: number) => {
         const indexPage = readTheCurrentPage(page);
 
+        const keysWithoutProcessed = Object.keys(contentList[indexPage]); // = file -v- 裡面的所有欄位 (LIST)
+        await updateFileFields(keysWithoutProcessed, contentList[indexPage]);
         setCurrentPage(page);
-        setCurrentFileContentVisual(contentList[indexPage][currentContentFieldKey]);
 
         // @ 若沒有鎖定
         if (!isLockingCheckedAll) {
@@ -593,7 +588,7 @@ const labelData = () => {
         }
     } 
 
-    // -v- handle -v- 處理「當前」頁面的 GPT
+    // -v- handle - 處理「當前」頁面的 GPT
     const handleGptAction = () => {
 
         // setIsLoading(true);
@@ -621,7 +616,29 @@ const labelData = () => {
         // .finally(() => { setIsLoading(false); })
     }
 
-    // ----- handle -v- 處理「全部」頁面的 GPT
+    // -v- handle - 更新當前檔案 Fields
+    async function updateFileFields(keysWithoutProcessed: string[], tempContentList: FileContentType) {
+
+        const formattedKeys = keysWithoutProcessed.map(key => ({ value: key, label: key }));
+        let result_currentFieldKey:string = currentContentFieldKey;
+        setFileFieldsList(formattedKeys);
+
+        // @ 如果目前沒有 currentContentFieldKey，或者它不再是有效的 key，則設置為第一個 key
+        if (currentContentFieldKey == null || !formattedKeys.some(key => key.value === currentContentFieldKey)) {
+            console.log(formattedKeys.some(key => key.value === currentContentFieldKey), currentContentFieldKey == null)
+
+            const defaultFieldKey = keysWithoutProcessed[0];
+
+            setCurrentContentFieldKey(defaultFieldKey);
+            result_currentFieldKey = defaultFieldKey;
+        }
+
+        setCurrentFileContentVisual(tempContentList[result_currentFieldKey])
+        return result_currentFieldKey;
+        
+    }
+
+    // -v- handle -v- 處理「全部」頁面的 GPT
     const handleGptActionAll = () => {
         // setIsLoading(true);
         // const request = {
@@ -647,7 +664,7 @@ const labelData = () => {
         //   .finally(() => { setIsLoading(false); })
     }
 
-    // ----- handle -v- 處理 RE 
+    // -v- handle - 處理 RE 
     const handleReAction = () => {
 
         // // - Loading Progress
@@ -685,7 +702,7 @@ const labelData = () => {
         
     }
 
-    // ----- Template -v- 編輯欄位
+    // -v- Template - 編輯欄位
     const editFieldsLabelTemplate = () => {
 
         const indexPage = readTheCurrentPage(currentPage);
@@ -795,7 +812,7 @@ const labelData = () => {
         </> )
     }
 
-    // ----- 進入網頁執行一次 Init
+    // -v- 進入網頁執行一次 Init
     useEffect(() => {
         fetchFilesName();
     }, []);
@@ -806,18 +823,6 @@ const labelData = () => {
             navigate(webRoutes.labelData);
         }
     }, [navigate, storedAccount]);
-    
-    // useEffect(() => {
-    
-    //     const interval = setInterval(() => {
-    //         if (currentFileName && currentFileContentVisual && !isLoading) {
-    //             uploadProcessedFile()
-    //         }
-    //     }, 1000 * 60 * 10); // 每隔3000毫秒（即3秒）執行一次
-    
-    //     return () => clearInterval(interval); // 清除間隔，防止記憶體洩漏
-    
-    // }, [currentFileName, currentFileContentVisual, isLoading]); // 空依賴數組意味著這個效果只會在組件掛載時運行一次
     
 
     return (
