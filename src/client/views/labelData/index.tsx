@@ -194,7 +194,7 @@ const labelData = () => {
             const processed_response = await defaultHttp.post(processDataRoutes.fetchProcessedContent, request, { headers: storedHeaders() });
             if (processed_response?.data?.[defaultPage]?.processed) {
                 const currentProcessedData = processed_response.data[defaultPage].processed;
-                setProcessedList(processed_response.data)
+                setProcessedList(processed_response.data);
                 
                 // @ Options 選擇要顯示的欄位
                 processOptions(currentProcessedData);

@@ -1,17 +1,18 @@
 import { useEffect, useState } from 'react';
 import {
-  Spin,
-  Card,
-  Row,
-  Col,
-  Button,
-  Select,
-  Pagination,
-  Input,
-  Typography,
-  Checkbox,
-  Switch,
+    Spin,
+    Card,
+    Row,
+    Col,
+    Button,
+    Select,
+    Pagination,
+    Input,
+    Typography,
+    Checkbox,
+    Switch,
 } from 'antd';
+import { message } from 'antd';
 import { UploadOutlined, CheckOutlined, DeleteOutlined, CloseOutlined, DownloadOutlined, DownOutlined, UpOutlined, ClearOutlined, MonitorOutlined} from '@ant-design/icons';
 
 import { handleErrorResponse } from '../../utils';
@@ -22,6 +23,8 @@ import './index.css'
 const CheckboxGroup = Checkbox.Group;
 import { HorizontalBarChart } from './horizontalBarChart';
 
+import { storedHeaders } from '../../utils/storedHeaders';
+
 // - 定義類型
 import type { CheckboxValueType } from 'antd/es/checkbox/Group';
 import type { CheckboxChangeEvent } from 'antd/es/checkbox';
@@ -29,19 +32,24 @@ type SelectType = { value: string; label: string; };
 type ProcessedContentType = { fileName:string, content: string; processed?: ProcessedFieldsType[]; };
 type ProcessedFieldsType = { name: string; value: string; the_surrounding_words: string; regular_expression_match: string, regular_expression_formula: string, gpt_value: string };
 
+type ProcessedListType = {
+    processed: ProcessedFieldsType[];
+}
+
 const compareData = () => {
 
 
     // -------------------------------------------------- Fields Settings
     // - Global Settings
     const [isLoading, setIsLoading] = useState(false);
+    const [messageApi, contextHolder] = message.useMessage();
     const [isVisible, setIsVisible] = useState<boolean[]>([false, true, true, true, false]);
     const chooseIsVisible = (index: number) => {
-      return (event: React.MouseEvent<HTMLElement>) => {
-        const newIsVisible = [...isVisible];
-        newIsVisible[index] = !newIsVisible[index];
-        setIsVisible(newIsVisible);
-      };
+        return (event: React.MouseEvent<HTMLElement>) => {
+            const newIsVisible = [...isVisible];
+            newIsVisible[index] = !newIsVisible[index];
+            setIsVisible(newIsVisible);
+        };
     }
     
     // - File List
@@ -58,6 +66,7 @@ const compareData = () => {
     const [processedFields, setProcessedFields] = useState<ProcessedFieldsType[]>([]); 
 
     // - Processed Fields
+    const [processedList, setProcessedList] = useState<ProcessedListType[]>([]);
     const [processedFieldsLabelList, setProcessedLabelList] = useState<SelectType[]>([])
     const [currentSelectedLabel, setCurrentSelectedLabel] = useState<string>("");
     const [formattersMethodList, ] = useState<SelectType[]>([
@@ -82,29 +91,37 @@ const compareData = () => {
 
     // ----- API -> 抓取在 uploads/files 裡面的資料名稱
     const fetchFilesName = async () => {
-        defaultHttp.get(processDataRoutes.fetchUploadsFileName, {})
-        .then((response) => {
+        try {
+            setIsLoading(true);
+            const response = await defaultHttp.get(processDataRoutes.fetchUploadsFileName, {
+                headers: storedHeaders()
+            });
             const newFileNames = response.data.map((fileName: string) => ({ value: fileName, label: fileName }));
             setFilesNameList(newFileNames);
-        })
-        .catch((error) => {
+        } catch (error) {
             handleErrorResponse(error);
-        }).finally(() => {});
+        } finally {
+            setIsLoading(false);
+        }
     }
 
     // ----- API -> 讀取 processed 的內容
     const fetchProcessedFileContent = async (fileName: string) => {
+        try {
+            setIsLoading(true); 
+            const request = {
+                fileName: fileName as string,
+            }
 
-        setIsLoading(true); 
-        const request = {
-            fileName: fileName as string,
-        }
+            // @ 處理 file 內容
+            const file_response = await defaultHttp.post(processDataRoutes.fetchFileContent, request, { headers: storedHeaders() });
+            setContentList(file_response.data);
     
-        defaultHttp.post(processDataRoutes.fetchProcessedContent, request)
-        .then((response) => {
-            setContentList(response.data);
-            if (response?.data?.[readTheCurrentPage(currentPage)]?.processed) {
-                const processedData = response.data[readTheCurrentPage(currentPage)].processed;
+            // @ 處理 processed 內容
+            const processed_response = await defaultHttp.post(processDataRoutes.fetchProcessedContent, request, { headers: storedHeaders() });
+            if (processed_response?.data?.[readTheCurrentPage(currentPage)]?.processed) {
+                setProcessedList(processed_response.data);
+                const processedData = processed_response.data[readTheCurrentPage(currentPage)].processed;
                 const processedFieldsLabel = processedData.map((item:ProcessedFieldsType) => ({
                     value: item.name,
                     label: item.name
@@ -124,25 +141,74 @@ const compareData = () => {
                     setProcessLabelCheckedList(processedNameList);
                 }
             }
-        })
-        .catch((error) => {
+        } catch (error) {
             handleErrorResponse(error);
-        }).finally(() => { setIsLoading(false); });
+        } finally {
+            setIsLoading(false);
+        }
     }
 
     // ----- API -> 轉換格式
     const updateFormatters = async () => {
-
-        setIsLoading(true); 
+        try {
+            setIsLoading(true); 
         const request = {
             fileName: currentFileName as string,
             preFormatterLabel: currentSelectedLabel as string,
             preFormatterMethod: currentFormatterMethod as string
         }
-    
-        defaultHttp.post(processDataRoutes.formatterProcessedContent, request)
+
+         // @ 處理 file 內容
+        const response = await defaultHttp.post(processDataRoutes.fetchFileContent, request, { headers: storedHeaders() });
+        messageApi.success(response.statusText)
+        } catch (error) {
+            handleErrorResponse(error);
+        } finally {
+            setIsLoading(false);
+        }
+    }
+
+    // ----- API -> 下載CSV
+    const downloadCSV = async () => {
+
+        setIsLoading(true); 
+        const request = {
+            fileName: currentFileName as string,
+            processLabelCheckedList: processLabelCheckedList,
+        }
+
+        defaultHttp.post(processDataRoutes.downloadCSV, request, {
+            headers: storedHeaders()
+        })
         .then((response) => {
-           
+
+            // @ 假設 response.data 為 binary
+            const blob = new Blob([response.data], { type: 'application/octet-stream' }); // 請根據你的檔案類型調整 MIME 類型
+            const url = URL.createObjectURL(blob);
+
+            // @ 創建一個 <a> 標籤來觸發檔案下載
+            const a = document.createElement('a');
+            a.href = url;
+
+            // @ 增加下載時間
+            const contentDisposition = response.headers['content-disposition'];
+            let fileName = currentFileName;
+            if (contentDisposition) {
+                console.log(contentDisposition)
+                const match = contentDisposition.match(/filename="?(.*?)"?$/);
+                if (match && match[1]) {
+                    fileName = match[1];
+                }
+                console.log(fileName)
+            }
+
+            a.download = fileName || "";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+
+            // - 釋放 URL
+            URL.revokeObjectURL(url);
         })
         .catch((error) => {
             handleErrorResponse(error);
@@ -214,11 +280,14 @@ const compareData = () => {
         stringValues.forEach((label) => {
             let sum = 0;
 
-            contentList.forEach((content) => {
-                content.processed?.forEach((field) => {
-                    if ( field.name === label ) {
-                        sum += parseFloat(field.value)
+            processedList.forEach((processed) => {
+                processed.processed?.forEach((field) => {
+                    if (field != null) {
+                        if ( field.name === label ) {
+                            sum += parseFloat(field.value)
+                        }
                     }
+                    
                 })
             })
 
@@ -230,8 +299,8 @@ const compareData = () => {
         stringValues.forEach((label) => {
             let sum = 0;
 
-            contentList.forEach((content) => {
-                content.processed?.forEach((field) => {
+            processedList.forEach((processed) => {
+                processed.processed?.forEach((field) => {
                     if ( field.name === label ) {
                         sum += parseFloat(field.regular_expression_match)
                     }
@@ -246,8 +315,8 @@ const compareData = () => {
         stringValues.forEach((label) => {
             let sum = 0;
 
-            contentList.forEach((content) => {
-                content.processed?.forEach((field) => {
+            processedList.forEach((processed) => {
+                processed.processed?.forEach((field) => {
                     if ( field.name === label ) {
                         sum += parseFloat(field.gpt_value)
                     }
@@ -268,8 +337,8 @@ const compareData = () => {
             const reValue = newCompareREDatasets[i];
             const gptValue = newCompareGPTDatasets[i];
 
-            const reDifference = Math.abs(reValue - groundTruthValue) / contentList.length;
-            const gptDifference = Math.abs(gptValue - groundTruthValue) / contentList.length;
+            const reDifference = Math.abs(reValue - groundTruthValue) / processedList.length;
+            const gptDifference = Math.abs(gptValue - groundTruthValue) / processedList.length;
 
             reVsGroundTruth.push(reDifference);
             gptVsGroundTruth.push(gptDifference);
@@ -344,7 +413,7 @@ const compareData = () => {
                         <div className='w-full grid mt-4'>
                             <Button className='w-full' 
                                     onClick={updateFormatters} 
-                                    disabled={currentSelectedLabel == "" || currentFormatterMethod == "" || true}> 
+                                    disabled={currentSelectedLabel == "" || currentFormatterMethod == "" || currentFileName == ""}> 
                                 轉換 
                             </Button>
                         </div>
@@ -383,6 +452,14 @@ const compareData = () => {
                                 value={currentFileName}
                                 loading={isLoading} 
                                 showSearch />
+
+                            <div>
+                                <Button
+                                        onClick={downloadCSV} 
+                                        disabled={currentFileName == ""}> 
+                                    下載csv
+                                </Button>
+                            </div>
                         </Card>
                     </>}
 
@@ -435,6 +512,7 @@ const compareData = () => {
 
                 </Col>
             </Row>
+            {contextHolder}
         </Spin>
     );
 };

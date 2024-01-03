@@ -13,6 +13,7 @@ app.post('/processData/deleteFile', processDataController.deleteFile);
 app.post('/processData/uploadTheFile', processDataController.uploadTheFile);
 app.post('/processData/uploadProcessedFile', processDataController.uploadProcessedFile);
 app.post('/processData/downloadProcessedFile', processDataController.downloadProcessedFile);
+app.post('/processData/downloadCSV', processDataController.downloadCSV);
 
 // @ FOR LABEL ACTIONs
 app.post('/processData/addExtractionLabel_all', processDataController.addExtractionLabel_all);

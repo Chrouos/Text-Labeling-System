@@ -1,6 +1,8 @@
 const ConfigCrypto = require('../tools/ConfigCrypto')
 const { OpenAI } = require("openai");
 
+const createCsvWriter = require('csv-writer').createObjectCsvWriter;
+
 const fs = require('fs')
 const path = require('path')
 const multer = require('multer');
@@ -793,4 +795,67 @@ exports.formatterProcessedContent = async (req, res) => {
     }
 };
 
+// -------------------------------------------------- 下載CSV
+exports.downloadCSV = async (req, res) => {
+    try {
 
+        const account = req.headers['stored-account'];
+        const { processedDirectory, filesDirectory } = determineDirectories(account);
+        const filePath = path.join(filesDirectory, req.body.fileName);
+        const processedPath = path.join(processedDirectory, req.body.fileName);
+        const processLabelCheckedList = req.body.processLabelCheckedList;
+        
+
+        // 檢查檔案是否存在
+        if (fs.existsSync(filePath) && fs.existsSync(processedPath)) {
+            const defaultColumn = ['cleanJudgement','cleanOpinion','judgement','opinion'];
+            const column = [ ...defaultColumn, ...processLabelCheckedList];
+            const fileLines = fs.readFileSync(filePath, 'utf-8').split('\n').filter(line => line.trim());
+            const processedLines = fs.readFileSync(processedPath, 'utf-8').split('\n').filter(line => line.trim());
+
+            // 基於欄位名稱列表創建標頭配置
+            const csvHeader = column.map(col => ({
+                id: col,
+                title: col,
+            }));
+
+            // 設定 CSV 檔案的路徑和欄位標題
+            const csvWriter = createCsvWriter({
+                path: req.body.fileName + '.csv',
+                header: csvHeader
+            });
+
+            let data = [];
+
+            fileLines.map((line, index) => {
+                try {
+                    const originalData = JSON.parse(line);
+                    const processedData = JSON.parse(processedLines[index]);
+                    processedData.processed.forEach(item => {
+                        originalData[item.name] = item.value;
+                    });
+                    data.push({ ...originalData});
+                } catch (error) {
+                    console.error(`Error parsing JSON on line ${index + 1}: ${error}`);
+                }
+            }).filter(data => data !== null);
+
+            await csvWriter.writeRecords(data);  // 寫入 CSV 文件
+            const downloadFileName = `${now_formatDate()}-${req.body.fileName}.csv`;
+            // 讀取 CSV 文件的內容
+            const BOM = '\uFEFF';
+            const csvContent = fs.readFileSync(req.body.fileName + '.csv', 'utf-8');
+            // 設置 HTTP 響應頭部
+            res.setHeader('Content-Disposition', `attachment; filename=${downloadFileName}`);
+            res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+            // 發送文件內容
+            res.send(csvContent);
+        } else {
+            res.status(404).send('One or both files not found');
+        }
+    }
+    catch (error) {
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.status(500).send(`[downloadProcessedFile] Error : ${error.message || error}`);
+    }
+}
