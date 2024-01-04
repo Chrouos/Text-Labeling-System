@@ -556,10 +556,18 @@ const labelData = () => {
         setProcessLabelCheckedList([]);
     }
 
+    
+
     // -v- handle - 對要擷取內容 HighLight, 並修改相關資訊，送到 Fields Input 中
     const handleTextSelection = (event: React.SyntheticEvent<HTMLTextAreaElement>) => {
+
+        function escapeRegExp(text:string) {
+            return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
         const textarea = event.currentTarget;
         const selectedText = textarea.value.substring(textarea.selectionStart, textarea.selectionEnd);
+        console.log(selectedText)
         const indexPage = readTheCurrentPage(currentPage);
         
         // @ 更新當前選擇項目欄位的 Input.
@@ -568,9 +576,13 @@ const labelData = () => {
             const updateFields = processedList[indexPage].processed.map ( field => {
                 if (field.name === currentSelectedLabel) { 
 
+                    const escapedSelectedText = escapeRegExp(selectedText);
+
                     // 使用正規表示法擷取前後文
                     const surroundingText = textarea.value.slice(Math.max(0, textarea.selectionStart - 50), textarea.selectionEnd + 50);
-                    const regex = new RegExp(`([^，。、]*[，。、]*[^，。、]*${selectedText}[^，。、]*[，。、]*[^，。、]*)`);
+                    const regex = new RegExp(`([^，。、]*[，。、]*[^，。、]*${escapedSelectedText}[^，。、]*[，。、]*[^，。、]*)`);
+                    // const regex = new RegExp(`([^，。、]*[，。、]*[^，。、]*${selectedText}[^，。、]*[，。、]*[^，。、]*)`);
+                    
                     const match = surroundingText.match(regex);
                     const the_surrounding_words = match ? match[0] : "";
 
