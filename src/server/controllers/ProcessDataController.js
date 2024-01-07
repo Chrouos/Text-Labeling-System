@@ -37,8 +37,6 @@ function determineDirectories(headers) {
         const temp_account =  headers['temp-stored-account']
         processedDirectory = path.join(__dirname, '..', 'uploads', 'processed', temp_account);
         filesDirectory = path.join(__dirname, '..', 'uploads', 'files', temp_account);
-
-        
     }
 
     // 確認資料夾是否存在
@@ -268,7 +266,7 @@ exports.downloadProcessedFile = async (req, res) => {
 exports.addExtractionLabel_all = async (req, res) => {
     try {
 
-        const { processedDirectory } = determineDirectories(account);
+        const { processedDirectory } = determineDirectories(req.headers);
 
         const labelToAdd = req.body.labelToAdd;
         if (!labelToAdd) res.status(500).send("labelToAdd is empty"); // = 防呆
@@ -321,7 +319,7 @@ exports.addExtractionLabel_all = async (req, res) => {
 // -------------------------------------------------- 全體減少欄位
 exports.removeLabel_all = async (req, res) => {
     try {
-        const { processedDirectory } = determineDirectories(account);
+        const { processedDirectory } = determineDirectories(req.headers);
 
         const fileName = req.body.fileName;
         const labelToRemove = req.body.labelToRemove;
@@ -402,7 +400,7 @@ exports.deleteFile = async (req, res) => {
 // -------------------------------------------------- 儲存排序的資料
 exports.uploadFileSort = async (req, res) => {
     try {
-        const { processedDirectory } = determineDirectories(account);
+        const { processedDirectory } = determineDirectories(req.headers);
         const sortOptions = req.body.sortOptions;
         const fileName = req.body.fileName;
 
