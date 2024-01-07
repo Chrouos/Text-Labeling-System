@@ -15,7 +15,8 @@ export const processDataRoutes = {
   gptRetrieve_all: `${API_URL}/processData/gptRetrieve_all`,
   formatterProcessedContent: `${API_URL}/processData/formatterProcessedContent`,
   uploadFileSort: `${API_URL}/processData/uploadFileSort`,
-  downloadCSV: `${API_URL}/processData/downloadCSV`,
+  downloadExcel: `${API_URL}/processData/downloadExcel`,
+  fetchUsers: `${API_URL}/processData/fetchUsers`,
 };
 
 export const loginRoutes = {

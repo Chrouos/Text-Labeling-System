@@ -1,5 +1,6 @@
 ## Start.
 
+
 `npm install`
 
 ```
@@ -37,3 +38,6 @@ chomd +x run.sh # 先把 run.sh 轉成可以啟動的模式
 >    }
 > },
 > ```
+
+
+[工作流程](https://github.com/Chrouos/Text-Labeling-System/blob/main/workflow.md)

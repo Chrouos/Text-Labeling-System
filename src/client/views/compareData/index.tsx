@@ -11,6 +11,7 @@ import {
     Typography,
     Checkbox,
     Switch,
+    SelectProps,
 } from 'antd';
 import { message } from 'antd';
 import { UploadOutlined, CheckOutlined, DeleteOutlined, CloseOutlined, DownloadOutlined, DownOutlined, UpOutlined, ClearOutlined, MonitorOutlined} from '@ant-design/icons';
@@ -54,7 +55,7 @@ const compareData = () => {
     
     // - File List
     const [filesNameList, setFilesNameList] = useState<SelectType[]>([]);
-    const [currentFileName, setCurrentFileName] = useState<string>("");
+    const [currentFileName, setCurrentFileName] = useState<string | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
     const readTheCurrentPage = (page: number) => {
         const fileIndex = (page > 0) ? page - 1 : 0;
@@ -68,6 +69,8 @@ const compareData = () => {
     // - Processed Fields
     const [processedList, setProcessedList] = useState<ProcessedListType[]>([]);
     const [processedFieldsLabelList, setProcessedLabelList] = useState<SelectType[]>([])
+    const [userList, setUserList] = useState<SelectType[]>([])
+    const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
     const [currentSelectedLabel, setCurrentSelectedLabel] = useState<string>("");
     const [formattersMethodList, ] = useState<SelectType[]>([
         { label: "轉換為金錢(Integer)", value: "number" },
@@ -116,7 +119,7 @@ const compareData = () => {
             // @ 處理 file 內容
             const file_response = await defaultHttp.post(processDataRoutes.fetchFileContent, request, { headers: storedHeaders() });
             setContentList(file_response.data);
-    
+
             // @ 處理 processed 內容
             const processed_response = await defaultHttp.post(processDataRoutes.fetchProcessedContent, request, { headers: storedHeaders() });
             if (processed_response?.data?.[readTheCurrentPage(currentPage)]?.processed) {
@@ -152,15 +155,15 @@ const compareData = () => {
     const updateFormatters = async () => {
         try {
             setIsLoading(true); 
-        const request = {
-            fileName: currentFileName as string,
-            preFormatterLabel: currentSelectedLabel as string,
-            preFormatterMethod: currentFormatterMethod as string
-        }
+            const request = {
+                fileName: currentFileName as string,
+                preFormatterLabel: currentSelectedLabel as string,
+                preFormatterMethod: currentFormatterMethod as string
+            }
 
-         // @ 處理 file 內容
-        const response = await defaultHttp.post(processDataRoutes.fetchFileContent, request, { headers: storedHeaders() });
-        messageApi.success(response.statusText)
+            // @ 處理 file 內容
+            const response = await defaultHttp.post(processDataRoutes.fetchFileContent, request, { headers: storedHeaders() });
+            messageApi.success(response.statusText)
         } catch (error) {
             handleErrorResponse(error);
         } finally {
@@ -168,22 +171,24 @@ const compareData = () => {
         }
     }
 
-    // ----- API -> 下載CSV
-    const downloadCSV = async () => {
+    // ----- API -> 下載Excel
+    const downloadExcel = async () => {
 
         setIsLoading(true); 
         const request = {
             fileName: currentFileName as string,
+            selectedUsers: selectedUsers,
             processLabelCheckedList: processLabelCheckedList,
         }
 
-        defaultHttp.post(processDataRoutes.downloadCSV, request, {
-            headers: storedHeaders()
+        defaultHttp.post(processDataRoutes.downloadExcel, request, {
+            headers: storedHeaders(),
+            responseType: 'blob'
         })
         .then((response) => {
 
             // @ 假設 response.data 為 binary
-            const blob = new Blob([response.data], { type: 'application/octet-stream' }); // 請根據你的檔案類型調整 MIME 類型
+            const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }); // 請根據你的檔案類型調整 MIME 類型
             const url = URL.createObjectURL(blob);
 
             // @ 創建一個 <a> 標籤來觸發檔案下載
@@ -215,12 +220,33 @@ const compareData = () => {
         }).finally(() => { setIsLoading(false); });
     }
 
+    // ----- API -> 抓取 fetchFilesName 後擁有該檔名的所有user
+    const fetchUsers = async () => {
+        try {
+            setIsLoading(true);
+            const request = {
+                fileName: currentFileName as string,
+            }
+
+            const response = await defaultHttp.post(processDataRoutes.fetchUsers, request, { headers: storedHeaders() });
+            setUserList(response.data);
+        } catch (error) {
+            handleErrorResponse(error);
+        } finally {
+            setIsLoading(false);
+        }
+    }
+
     // -------------------------------------------------- Other Functions
 
     // ----- 選擇檔案
     const chooseTheFile = (selectedValue: string) => {
-        setCurrentFileName(selectedValue);
-        fetchProcessedFileContent(selectedValue);
+        if (!selectedValue) {
+            setCurrentFileName(null);
+        } else {
+            setCurrentFileName(selectedValue);
+            fetchProcessedFileContent(selectedValue);
+        }
     }
     
     // ----- 選擇欄位
@@ -262,6 +288,12 @@ const compareData = () => {
     const handleChange = (list: CheckboxValueType[]) => {
         if (!isLockingCheckedAll) {
             setProcessLabelCheckedList(list);
+        }
+    };
+
+    const handleUserChange = (value: string) => {
+        if (Array.isArray(value)) {
+            setSelectedUsers(value);
         }
     };
 
@@ -365,6 +397,13 @@ const compareData = () => {
         fetchData();
     }, [contentList, processLabelCheckedList])
 
+    // ----- 偵測 
+    useEffect(() => {
+        if (currentFileName != null) {
+            fetchUsers();
+        }
+    }, [currentFileName])
+
     // -------------------------------------------------- Visual Return
     return (
         <Spin spinning={isLoading} tip="Loading...">
@@ -443,19 +482,31 @@ const compareData = () => {
                             extra={<Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(1)}></Button>} >
 
                             <Select 
-                                className='w-full mb-4 col-span-2' 
+                                className='w-full mb-4 col-span-2'
                                 placeholder="Select the File Name"
                                 optionFilterProp="children"
                                 filterOption={labelValue_selectedFilterOption}
                                 options={filesNameList}
                                 onChange={chooseTheFile}
                                 value={currentFileName}
-                                loading={isLoading} 
-                                showSearch />
+                                loading={isLoading}
+                                showSearch
+                                allowClear
+                                />
 
+                            {currentFileName &&
+                                <Select
+                                    className='w-full mb-4 col-span-2' 
+                                    mode="multiple"
+                                    allowClear
+                                    style={{ width: '100%' }}
+                                    placeholder="Select the user"
+                                    onChange={handleUserChange}
+                                    options={userList}
+                                    />}
                             <div>
                                 <Button
-                                        onClick={downloadCSV} 
+                                        onClick={downloadExcel} 
                                         disabled={currentFileName == ""}> 
                                     下載csv
                                 </Button>

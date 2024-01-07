@@ -8,9 +8,8 @@ WORKDIR /usr/src/app
 COPY package*.json yarn.lock ./
 
 
-
 # 安裝依賴
-RUN npm install -g nodemon && npm install && yarn install && npm install csv-writer
+RUN npm install -g nodemon && npm install && yarn install
 
 
 # 複製其他源碼到工作目錄

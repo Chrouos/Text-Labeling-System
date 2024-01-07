@@ -9,11 +9,12 @@ app.get('/processData/fetchUploadsFileName', processDataController.fetchUploadsF
 app.post('/processData/fetchFileContent', processDataController.fetchFileContent);
 app.post('/processData/fetchProcessedContent', processDataController.fetchProcessedContent);
 app.post('/processData/deleteFile', processDataController.deleteFile);
+app.post('/processData/fetchUsers', processDataController.fetchUsers);
 
 app.post('/processData/uploadTheFile', processDataController.uploadTheFile);
 app.post('/processData/uploadProcessedFile', processDataController.uploadProcessedFile);
 app.post('/processData/downloadProcessedFile', processDataController.downloadProcessedFile);
-app.post('/processData/downloadCSV', processDataController.downloadCSV);
+app.post('/processData/downloadExcel', processDataController.downloadExcel);
 
 // @ FOR LABEL ACTIONs
 app.post('/processData/addExtractionLabel_all', processDataController.addExtractionLabel_all);

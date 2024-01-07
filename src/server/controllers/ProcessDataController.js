@@ -1,7 +1,7 @@
 const ConfigCrypto = require('../tools/ConfigCrypto')
 const { OpenAI } = require("openai");
 
-const createCsvWriter = require('csv-writer').createObjectCsvWriter;
+const ExcelJS = require('exceljs');
 
 const fs = require('fs')
 const path = require('path')
@@ -268,7 +268,7 @@ exports.downloadProcessedFile = async (req, res) => {
 exports.addExtractionLabel_all = async (req, res) => {
     try {
 
-        const { processedDirectory } = determineDirectories(req.headers);
+        const { processedDirectory } = determineDirectories(account);
 
         const labelToAdd = req.body.labelToAdd;
         if (!labelToAdd) res.status(500).send("labelToAdd is empty"); // = 防呆
@@ -321,7 +321,7 @@ exports.addExtractionLabel_all = async (req, res) => {
 // -------------------------------------------------- 全體減少欄位
 exports.removeLabel_all = async (req, res) => {
     try {
-        const { processedDirectory } = determineDirectories(req.headers);
+        const { processedDirectory } = determineDirectories(account);
 
         const fileName = req.body.fileName;
         const labelToRemove = req.body.labelToRemove;
@@ -402,7 +402,7 @@ exports.deleteFile = async (req, res) => {
 // -------------------------------------------------- 儲存排序的資料
 exports.uploadFileSort = async (req, res) => {
     try {
-        const { processedDirectory } = determineDirectories(req.headers);
+        const { processedDirectory } = determineDirectories(account);
         const sortOptions = req.body.sortOptions;
         const fileName = req.body.fileName;
 
@@ -795,74 +795,105 @@ exports.formatterProcessedContent = async (req, res) => {
 };
 
 // -------------------------------------------------- 下載CSV
-exports.downloadCSV = async (req, res) => {
+exports.downloadExcel = async (req, res) => {
     try {
 
         const { processedDirectory, filesDirectory } = determineDirectories(req.headers);
         const filePath = path.join(filesDirectory, req.body.fileName);
         const processedPath = path.join(processedDirectory, req.body.fileName);
         const processLabelCheckedList = req.body.processLabelCheckedList;
-        const csvFilePath = req.body.fileName + '.csv';
+        const selectedUsers = req.body.selectedUsers;
+
+        // 創建一個新的 Excel 工作簿
+        const workbook = new ExcelJS.Workbook();
+
+        for (let selectedUser of selectedUsers) {
+            
+            const processedDirectory = path.join(__dirname, '..', 'uploads', 'processed', selectedUser, req.body.fileName);
+            const filesDirectory = path.join(__dirname, '..', 'uploads', 'files', selectedUser, req.body.fileName);
+
+            if (fs.existsSync(processedDirectory) && fs.existsSync(filesDirectory)) {
+                const defaultColumn = ['cleanJudgement', 'cleanOpinion', 'judgement', 'opinion'];
+                const column = [...defaultColumn, ...processLabelCheckedList];
+                const fileLines = fs.readFileSync(filesDirectory, 'utf-8').split('\n').filter(line => line.trim());
+                const processedLines = fs.readFileSync(processedDirectory, 'utf-8').split('\n').filter(line => line.trim());
+
+                // 添加一個新的工作表
+                const sheet = workbook.addWorksheet(selectedUser);
         
-        // 檢查檔案是否存在
-        if (fs.existsSync(filePath) && fs.existsSync(processedPath)) {
-            const defaultColumn = ['cleanJudgement','cleanOpinion','judgement','opinion'];
-            const column = [ ...defaultColumn, ...processLabelCheckedList];
-            const fileLines = fs.readFileSync(filePath, 'utf-8').split('\n').filter(line => line.trim());
-            const processedLines = fs.readFileSync(processedPath, 'utf-8').split('\n').filter(line => line.trim());
-
-            // 基於欄位名稱列表創建標頭配置
-            const csvHeader = column.map(col => ({
-                id: col,
-                title: col,
-            }));
-
-            // 設定 CSV 檔案的路徑和欄位標題
-            const csvWriter = createCsvWriter({
-                path: req.body.fileName + '.csv',
-                header: csvHeader
-            });
-
-            let data = [];
-
-            fileLines.map((line, index) => {
-                try {
-                    const originalData = JSON.parse(line);
-                    const processedData = JSON.parse(processedLines[index]);
-                    processedData.processed.forEach(item => {
-                        originalData[item.name] = item.value;
-                    });
-                    data.push({ ...originalData});
-                } catch (error) {
-                    console.error(`Error parsing JSON on line ${index + 1}: ${error}`);
-                }
-            }).filter(data => data !== null);
-
-            await csvWriter.writeRecords(data);  // 寫入 CSV 文件
-            const downloadFileName = `${now_formatDate()}-${req.body.fileName}.csv`;
-            // 讀取 CSV 文件的內容
-            const BOM = '\uFEFF';
-            const csvContent = fs.readFileSync(req.body.fileName + '.csv', 'utf-8');
-            // 設置 HTTP 響應頭部
-            res.setHeader('Content-Disposition', `attachment; filename=${downloadFileName}`);
-            res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-            // 發送文件內容
-            res.send(csvContent);
-
-            // 傳送完畢後，刪除伺服器上的CSV檔案
-            fs.unlink(csvFilePath, (err) => {
-                if (err) {
-                    console.error(`Error deleting CSV file: ${err}`);
-                } else {
-                    console.log(`CSV file ${csvFilePath} was deleted.`);
-                }
-            });
-        } else {
-            res.status(404).send('One or both files not found');
+                // 添加標題行
+                sheet.columns = column.map(col => ({ header: col, key: col }));
+        
+                // 添加數據行
+                fileLines.forEach((line, index) => {
+                    try {
+                        const originalData = JSON.parse(line);
+                        const processedData = JSON.parse(processedLines[index]);
+                        processedData.processed.forEach(item => {
+                            originalData[item.name] = item.value;
+                        });
+                        sheet.addRow(originalData);
+                    } catch (error) {
+                        console.error(`Error parsing JSON on line ${index + 1}: ${error}`);
+                    }
+                });
+            } else {
+                res.status(404).send('One or both files not found');
+            }
         }
+        // 寫入 Excel 文件
+        const excelFileName = `${now_formatDate()}-${req.body.fileName}.xlsx`;
+        const excelFilePath = path.join(excelFileName);
+        await workbook.xlsx.writeFile(excelFileName);
+        // 讀取 Excel 文件內容
+        const excelContent = fs.readFileSync(excelFilePath);
+    
+        // 設置 HTTP 響應頭部
+        res.setHeader('Content-Disposition', `attachment; filename=${excelFileName}`);
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        // 發送文件內容
+        res.send(excelContent);
+
+        // 刪除伺服器上的 Excel 檔案
+        fs.unlink(excelFileName, (err) => {
+            if (err) {
+                console.error(`Error deleting Excel file: ${err}`);
+            } else {
+                console.log(`Excel file ${excelFileName} was deleted.`);
+            }
+        });
     }
     catch (error) {
         res.setHeader('Content-Type', 'text/plain; charset=utf-8');
         res.status(500).send(`[downloadProcessedFile] Error : ${error.message || error}`);
+    }
+}
+
+// -------------------------------------------------- compareData -> 抓取 fetchFilesName 後擁有該檔名的所有user
+exports.fetchUsers = async (req, res) => {
+    try {
+        const fileName = req.body.fileName;
+
+        const filesPath = './src/server/uploads/files';
+        const files = fs.readdirSync(filesPath);
+
+        const result = [];
+        const subfolders = fs.readdirSync(filesPath, { withFileTypes: true })
+                                .filter(dirent => dirent.isDirectory())
+                                .map(dirent => dirent.name);
+
+        for (const subfolder of subfolders) {
+            const subfolderPath = path.join(filesPath, subfolder);
+            const filesInSubfolder = fs.readdirSync(subfolderPath);
+
+            if (filesInSubfolder.includes(fileName)) {
+                result.push({label: subfolder, value: subfolder});
+            }
+        }
+
+        res.status(200).send(result);
+    }
+    catch (error) {
+        res.status(500).send(`[fetchUploadsFileName] Error : ${error.message || error}`);
     }
 }
