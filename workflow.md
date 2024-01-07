@@ -1,6 +1,7 @@
 ### 01/07
 + `git update-index --assume-unchanged ./src/server/config/development.js`
 + `git update-index --assume-unchanged ./src/client/utils/index.tsx`
++ `git update-index --assume-unchanged ./src/server/config/loginAccount.js`
 + 增加 admin 權限
 
 ### 12/22
