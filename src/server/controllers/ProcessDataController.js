@@ -402,7 +402,7 @@ exports.deleteFile = async (req, res) => {
 // -------------------------------------------------- 儲存排序的資料
 exports.uploadFileSort = async (req, res) => {
     try {
-        const { processedDirectory } = determineDirectories(account);
+        const { processedDirectory } = determineDirectories(req.headers);
         const sortOptions = req.body.sortOptions;
         const fileName = req.body.fileName;
 
