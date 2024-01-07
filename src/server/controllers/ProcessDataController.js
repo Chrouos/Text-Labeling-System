@@ -795,24 +795,15 @@ exports.formatterProcessedContent = async (req, res) => {
 // -------------------------------------------------- 下載CSV
 exports.downloadExcel = async (req, res) => {
     try {
-
-        const { processedDirectory, filesDirectory } = determineDirectories(req.headers);
-        const filePath = path.join(filesDirectory, req.body.fileName);
-        const processedPath = path.join(processedDirectory, req.body.fileName);
-        const processLabelCheckedList = req.body.processLabelCheckedList;
         const selectedUsers = req.body.selectedUsers;
 
         // 創建一個新的 Excel 工作簿
         const workbook = new ExcelJS.Workbook();
 
         for (let selectedUser of selectedUsers) {
-            
             const processedDirectory = path.join(__dirname, '..', 'uploads', 'processed', selectedUser, req.body.fileName);
             const filesDirectory = path.join(__dirname, '..', 'uploads', 'files', selectedUser, req.body.fileName);
-
             if (fs.existsSync(processedDirectory) && fs.existsSync(filesDirectory)) {
-                const defaultColumn = ['cleanJudgement', 'cleanOpinion', 'judgement', 'opinion'];
-                const column = [...defaultColumn, ...processLabelCheckedList];
                 const fileLines = fs.readFileSync(filesDirectory, 'utf-8').split('\n').filter(line => line.trim());
                 const processedLines = fs.readFileSync(processedDirectory, 'utf-8').split('\n').filter(line => line.trim());
 
@@ -820,7 +811,8 @@ exports.downloadExcel = async (req, res) => {
                 const sheet = workbook.addWorksheet(selectedUser);
         
                 // 添加標題行
-                sheet.columns = column.map(col => ({ header: col, key: col }));
+                const processed = JSON.parse(processedLines[0]);
+                sheet.columns = processed.processed.map(item => ({ header: item.name, key: item.name }));
         
                 // 添加數據行
                 fileLines.forEach((line, index) => {
@@ -840,9 +832,10 @@ exports.downloadExcel = async (req, res) => {
             }
         }
         // 寫入 Excel 文件
-        const excelFileName = `${now_formatDate()}-${req.body.fileName}.xlsx`;
+        const excelFileName = `${now_formatDate()}-${req.body.fileName}.xlsx`.replace('.txt', '');
         const excelFilePath = path.join(excelFileName);
         await workbook.xlsx.writeFile(excelFileName);
+
         // 讀取 Excel 文件內容
         const excelContent = fs.readFileSync(excelFilePath);
     

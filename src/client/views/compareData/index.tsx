@@ -178,7 +178,6 @@ const compareData = () => {
         const request = {
             fileName: currentFileName as string,
             selectedUsers: selectedUsers,
-            processLabelCheckedList: processLabelCheckedList,
         }
 
         defaultHttp.post(processDataRoutes.downloadExcel, request, {
@@ -507,7 +506,7 @@ const compareData = () => {
                             <div>
                                 <Button
                                         onClick={downloadExcel} 
-                                        disabled={currentFileName == ""}> 
+                                        disabled={currentFileName == null || selectedUsers.length == 0}> 
                                     下載csv
                                 </Button>
                             </div>
