@@ -6,7 +6,6 @@ user = 'tester'
 uploads_processed_dir = './src/server/uploads/processed/' + user
 files = ['random_900_5.txt', 'random_900_9.txt']
 
-
 field_names = [
     "事發經過", "事故日期", "傷勢", "職業",
     "精神賠償", "醫療費用",
