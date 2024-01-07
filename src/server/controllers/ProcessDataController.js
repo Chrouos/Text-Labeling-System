@@ -268,7 +268,7 @@ exports.downloadProcessedFile = async (req, res) => {
 exports.addExtractionLabel_all = async (req, res) => {
     try {
 
-        const { processedDirectory } = determineDirectories(account);
+        const { processedDirectory } = determineDirectories(req.headers);
 
         const labelToAdd = req.body.labelToAdd;
         if (!labelToAdd) res.status(500).send("labelToAdd is empty"); // = 防呆
@@ -321,7 +321,7 @@ exports.addExtractionLabel_all = async (req, res) => {
 // -------------------------------------------------- 全體減少欄位
 exports.removeLabel_all = async (req, res) => {
     try {
-        const { processedDirectory } = determineDirectories(account);
+        const { processedDirectory } = determineDirectories(req.headers);
 
         const fileName = req.body.fileName;
         const labelToRemove = req.body.labelToRemove;
