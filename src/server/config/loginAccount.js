@@ -5,13 +5,19 @@ module.exports = [
         password: '1234',
     },
     {
-        account: 'Yo',
-        password: 'Yo123',
+        account: 'tester',
+        password: '112233',
+        isAutoSave: false,
+        isAutoBreak: true,
+        fontSize:18,
     },
     {
-        account: 'user2',
-        password: '2222',
-    }
-
+        account: 'aaa',
+        password: '112233',
+    },
+    {
+        account: 'bbb',
+        password: '112233',
+    },
 ]
     
