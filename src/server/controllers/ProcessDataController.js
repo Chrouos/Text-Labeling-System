@@ -802,8 +802,8 @@ exports.downloadCSV = async (req, res) => {
         const filePath = path.join(filesDirectory, req.body.fileName);
         const processedPath = path.join(processedDirectory, req.body.fileName);
         const processLabelCheckedList = req.body.processLabelCheckedList;
+        const csvFilePath = req.body.fileName + '.csv';
         
-
         // 檢查檔案是否存在
         if (fs.existsSync(filePath) && fs.existsSync(processedPath)) {
             const defaultColumn = ['cleanJudgement','cleanOpinion','judgement','opinion'];
@@ -848,6 +848,15 @@ exports.downloadCSV = async (req, res) => {
             res.setHeader('Content-Type', 'text/csv; charset=utf-8');
             // 發送文件內容
             res.send(csvContent);
+
+            // 傳送完畢後，刪除伺服器上的CSV檔案
+            fs.unlink(csvFilePath, (err) => {
+                if (err) {
+                    console.error(`Error deleting CSV file: ${err}`);
+                } else {
+                    console.log(`CSV file ${csvFilePath} was deleted.`);
+                }
+            });
         } else {
             res.status(404).send('One or both files not found');
         }
