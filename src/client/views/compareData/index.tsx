@@ -162,7 +162,7 @@ const compareData = () => {
             }
 
             // @ 處理 file 內容
-            const response = await defaultHttp.post(processDataRoutes.fetchFileContent, request, { headers: storedHeaders() });
+            const response = await defaultHttp.post(processDataRoutes.formatterProcessedContent, request, { headers: storedHeaders() });
             messageApi.success(response.statusText)
         } catch (error) {
             handleErrorResponse(error);
@@ -298,7 +298,6 @@ const compareData = () => {
 
     // ----- TODO: 比較距離
     const compareData = () => {
-
 
         // - Change The Labels.
         const stringValues = processLabelCheckedList.map(value => String(value)) as string[];

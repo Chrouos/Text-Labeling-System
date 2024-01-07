@@ -189,7 +189,6 @@ exports.fetchFileContent = async (req, res) => {
     catch (error) {
         res.status(500).send(`[fetchFileContent] Error : ${error.message || error}`);
     }
-
 };
 
 // -------------------------------------------------- 儲存已修改的資料
