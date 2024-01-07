@@ -16,7 +16,6 @@ export const adminSlice = createSlice({
     },
     logout: (state) => {
       state = null;
-
       return state;
     },
   },

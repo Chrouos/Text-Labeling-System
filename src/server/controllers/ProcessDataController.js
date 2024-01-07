@@ -19,7 +19,9 @@ function now_formatDate() {
 }
 
 // -------------------------------------------------- 儲存檔案 - 用於確定目錄路徑
-function determineDirectories(account) {
+function determineDirectories(headers) {
+    
+    const account = headers['stored-account'];
     let processedDirectory, filesDirectory;
 
     if (account && account !== 'admin') {
@@ -27,14 +29,21 @@ function determineDirectories(account) {
         processedDirectory = path.join(__dirname, '..', 'uploads', 'processed', account);
         filesDirectory = path.join(__dirname, '..', 'uploads', 'files', account);
 
-        // 確認資料夾是否存在
-        if (!fs.existsSync(filesDirectory)) { fs.mkdirSync(filesDirectory, { recursive: true }); }
-        if (!fs.existsSync(processedDirectory)) { fs.mkdirSync(processedDirectory, { recursive: true }); }
+        // // 確認資料夾是否存在
+        // if (!fs.existsSync(filesDirectory)) { fs.mkdirSync(filesDirectory, { recursive: true }); }
+        // if (!fs.existsSync(processedDirectory)) { fs.mkdirSync(processedDirectory, { recursive: true }); }
     } else {
         // 如果 account 不存在或是 admin，則使用預設路徑
-        processedDirectory = path.join(__dirname, '..', 'uploads', 'processed');
-        filesDirectory = path.join(__dirname, '..', 'uploads', 'files');
+        const temp_account =  headers['temp-stored-account']
+        processedDirectory = path.join(__dirname, '..', 'uploads', 'processed', temp_account);
+        filesDirectory = path.join(__dirname, '..', 'uploads', 'files', temp_account);
+
+        
     }
+
+    // 確認資料夾是否存在
+    if (!fs.existsSync(filesDirectory)) { fs.mkdirSync(filesDirectory, { recursive: true }); }
+    if (!fs.existsSync(processedDirectory)) { fs.mkdirSync(processedDirectory, { recursive: true }); }
 
     return { processedDirectory, filesDirectory };
 }
@@ -42,8 +51,7 @@ function determineDirectories(account) {
 // -------------------------------------------------- 儲存檔案
 exports.uploadTheFile = async (req, res) => {
     try {
-        const account = req.headers['stored-account'];
-        const { processedDirectory, filesDirectory } = determineDirectories(account);
+        const { processedDirectory, filesDirectory } = determineDirectories(req.headers);
 
         const storage = multer.diskStorage({
             destination: function(req, file, cb) {
@@ -115,8 +123,7 @@ exports.uploadTheFile = async (req, res) => {
 exports.fetchUploadsFileName = async (req, res) => {
     try {
 
-        const account = req.headers['stored-account'];
-        const { processedDirectory, filesDirectory } = determineDirectories(account);
+        const { processedDirectory, filesDirectory } = determineDirectories(req.headers);
         const files = fs.readdirSync(filesDirectory);  // = 讀取檔案名稱
 
         // @ 2. 過濾出 .json 檔案
@@ -125,7 +132,7 @@ exports.fetchUploadsFileName = async (req, res) => {
         res.status(200).send(responseData);
     }
     catch (error) {
-        res.status(500).send(`[uploadTheFile] Error : ${error.message || error}`);
+        res.status(500).send(`[fetchUploadsFileName] Error : ${error.message || error}`);
     }
 }
 
@@ -134,10 +141,9 @@ exports.fetchProcessedContent = async (req, res) => {
     try {
 
         // @ 1. 讀取檔案
-        const account = req.headers['stored-account'];
         const fileName = req.body.fileName
         
-        const { processedDirectory, filesDirectory } = determineDirectories(account);
+        const { processedDirectory, filesDirectory } = determineDirectories(req.headers);
 
         // @ 2. 過濾出.txt 檔案且名稱符合 req.body.fileName
         const files = fs.readdirSync(processedDirectory); 
@@ -164,8 +170,7 @@ exports.fetchFileContent = async (req, res) => {
     try {
 
         // @ 1. 確認變數
-        const account = req.headers['stored-account'];
-        const { processedDirectory, filesDirectory } = determineDirectories(account);
+        const { processedDirectory, filesDirectory } = determineDirectories(req.headers);
 
         // @ 2. 過濾出.txt 檔案且名稱符合 req.body.fileName
         const files = fs.readdirSync(filesDirectory); 
@@ -193,9 +198,8 @@ exports.fetchFileContent = async (req, res) => {
 exports.uploadProcessedFile = async (req, res) => {
     try {
 
-        const account = req.headers['stored-account'];
         const fileName = req.body.fileName;
-        const { processedDirectory, filesDirectory } = determineDirectories(account);
+        const { processedDirectory, filesDirectory } = determineDirectories(req.headers);
 
         // @ 轉換格式
         const processData = req.body.processed; 
@@ -217,8 +221,7 @@ exports.uploadProcessedFile = async (req, res) => {
 exports.downloadProcessedFile = async (req, res) => {
     try {
 
-        const account = req.headers['stored-account'];
-        const { processedDirectory, filesDirectory } = determineDirectories(account);
+        const { processedDirectory, filesDirectory } = determineDirectories(req.headers);
         const filePath = path.join(filesDirectory, req.body.fileName);
         const processedPath = path.join(processedDirectory, req.body.fileName);
 
@@ -265,7 +268,6 @@ exports.downloadProcessedFile = async (req, res) => {
 exports.addExtractionLabel_all = async (req, res) => {
     try {
 
-        const account = req.headers['stored-account'];
         const { processedDirectory } = determineDirectories(account);
 
         const labelToAdd = req.body.labelToAdd;
@@ -319,7 +321,6 @@ exports.addExtractionLabel_all = async (req, res) => {
 // -------------------------------------------------- 全體減少欄位
 exports.removeLabel_all = async (req, res) => {
     try {
-        const account = req.headers['stored-account'];
         const { processedDirectory } = determineDirectories(account);
 
         const fileName = req.body.fileName;
@@ -375,9 +376,8 @@ exports.deleteFile = async (req, res) => {
     try {
 
         // @ 1. 確認變數
-        const account = req.headers['stored-account'];
         const fileName = req.body.fileName;
-        const { processedDirectory, filesDirectory } = determineDirectories(account);
+        const { processedDirectory, filesDirectory } = determineDirectories(req.headers);
 
         // @ 2. 過濾出.txt 檔案且名稱符合 req.body.fileName
         const files = fs.readdirSync(filesDirectory); 
@@ -402,7 +402,6 @@ exports.deleteFile = async (req, res) => {
 // -------------------------------------------------- 儲存排序的資料
 exports.uploadFileSort = async (req, res) => {
     try {
-        const account = req.headers['stored-account'];
         const { processedDirectory } = determineDirectories(account);
         const sortOptions = req.body.sortOptions;
         const fileName = req.body.fileName;
@@ -799,8 +798,7 @@ exports.formatterProcessedContent = async (req, res) => {
 exports.downloadCSV = async (req, res) => {
     try {
 
-        const account = req.headers['stored-account'];
-        const { processedDirectory, filesDirectory } = determineDirectories(account);
+        const { processedDirectory, filesDirectory } = determineDirectories(req.headers);
         const filePath = path.join(filesDirectory, req.body.fileName);
         const processedPath = path.join(processedDirectory, req.body.fileName);
         const processLabelCheckedList = req.body.processLabelCheckedList;

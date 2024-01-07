@@ -1,12 +1,16 @@
 export function storedHeaders(): { [key: string]: string } {
     const storedAccount = sessionStorage.getItem('account');
+    const tempStoreAccount = sessionStorage.getItem('temp-account') || "";
 
-    // 如果 storedAccount 不為 null，則对其进行 URL 编码并返回含有 'stored-account' 的对象
     if (storedAccount !== null) {
         const encodedAccount = encodeURIComponent(storedAccount);
-        return { 'stored-account': encodedAccount };
+        let response: { [key: string]: string } = { 'stored-account': encodedAccount };
+        
+        if (storedAccount == "admin") 
+            response['temp-stored-account'] = tempStoreAccount;
+
+        return response;
     }
 
-    // 否則返回一個空物件
     return {};
 }

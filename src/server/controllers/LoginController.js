@@ -29,3 +29,25 @@ exports.checkExist = async (req, res) => {
         res.status(500).send(`[checkExist] Error : ${error.message || error}`);
     }
 }
+
+
+// ----- 輸出現有帳號
+exports.accountList = async (req, res) => {
+    try {
+        const account_configCrypto = new ConfigCrypto();
+        const responseData = account_configCrypto.config;
+
+        const excludeAccounts = ['admin']; // = 定義要過濾掉的帳號陣列
+
+        // 過濾掉 excludeAccounts 中的帳號，然後提取剩餘的帳號
+        const accountList = responseData
+            .filter(item => !excludeAccounts.includes(item.account))  // 過濾掉特定帳號
+            .map(item => item.account);  // 提取帳號
+
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.status(200).send(accountList);  // 發送過濾後的帳號列表
+    } catch (error) {
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.status(500).send(`[accountList] Error : ${error.message || error}`);
+    }
+}

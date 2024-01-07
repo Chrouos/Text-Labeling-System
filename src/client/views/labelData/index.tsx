@@ -31,6 +31,7 @@ import './index.css'
 import type { CheckboxChangeEvent } from 'antd/es/checkbox';
 import type { CheckboxValueType } from 'antd/es/checkbox/Group';
 import { storedHeaders } from '../../utils/storedHeaders';
+import { useAccount } from '../../store/accountContext';
 
 const { TextArea } = Input;
 const CheckboxGroup = Checkbox.Group;
@@ -55,14 +56,16 @@ type ModalFormatterType = {
 
 const labelData = () => {
 
+    // 監聽 temp-account 帳號
+    const { account } = useAccount();   
+    const storedAccount = sessionStorage.getItem('account');
+
   // -------------------------------------------------- Fields Settings
 
     // - Global Settings
     const [extraction_label_form] = Form.useForm();
     const [messageApi, contextHolder] = message.useMessage();
     const navigate = useNavigate();
-
-    const storedAccount = sessionStorage.getItem('account');
 
     const [isLoading, setIsLoading] = useState(false);
     const [isVisible, setIsVisible] = useState<boolean[]>([false, true, false, true, false]);
@@ -262,12 +265,10 @@ const labelData = () => {
             const contentDisposition = response.headers['content-disposition'];
             let fileName = currentFileName;
             if (contentDisposition) {
-                console.log(contentDisposition)
                 const match = contentDisposition.match(/filename="?(.*?)"?$/);
                 if (match && match[1]) {
                     fileName = match[1];
                 }
-                console.log(fileName)
             }
 
             a.download = fileName || "";
@@ -556,8 +557,6 @@ const labelData = () => {
         setProcessLabelCheckedList([]);
     }
 
-    
-
     // -v- handle - 對要擷取內容 HighLight, 並修改相關資訊，送到 Fields Input 中
     const handleTextSelection = (event: React.SyntheticEvent<HTMLTextAreaElement>) => {
 
@@ -567,7 +566,6 @@ const labelData = () => {
 
         const textarea = event.currentTarget;
         const selectedText = textarea.value.substring(textarea.selectionStart, textarea.selectionEnd);
-        console.log(selectedText)
         const indexPage = readTheCurrentPage(currentPage);
         
         // @ 更新當前選擇項目欄位的 Input.
@@ -637,7 +635,7 @@ const labelData = () => {
 
         // @ 如果目前沒有 currentContentFieldKey，或者它不再是有效的 key，則設置為第一個 key
         if (currentContentFieldKey == null || !formattedKeys.some(key => key.value === currentContentFieldKey)) {
-            console.log(formattedKeys.some(key => key.value === currentContentFieldKey), currentContentFieldKey == null)
+            // console.log(formattedKeys.some(key => key.value === currentContentFieldKey), currentContentFieldKey == null)
 
             const defaultFieldKey = keysWithoutProcessed[0];
 
@@ -826,8 +824,11 @@ const labelData = () => {
 
     // -v- 進入網頁執行一次 Init
     useEffect(() => {
+        
+        cleanTheField();
         fetchFilesName();
-    }, []);
+
+    }, [account]);
 
     useEffect(() => {
         // 如果已經有 storedAccount，則重定向到標籤資料頁面
