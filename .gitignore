@@ -1,13 +1,18 @@
 node_modules/
 /.vscode/
 
-src/server/uploads/processed/
-src/server/uploads/files/
+src/server/uploads/processed/*
+src/server/uploads/files/*
+
+processed/Y_110502022/
+processed/Z_112522104/
+
+
+/src/server/config/development.js
 
 .DS_Store
 
 .vscode/
-
 
 
 # `git update-index --assume-unchanged ./src/server/config/development.js`
