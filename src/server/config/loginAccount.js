@@ -12,11 +12,11 @@ module.exports = [
         fontSize:18,
     },
     {
-        account: 'aaa',
+        account: 'user_A',
         password: '112233',
     },
     {
-        account: 'bbb',
+        account: 'user_B',
         password: '112233',
     },
 ]
