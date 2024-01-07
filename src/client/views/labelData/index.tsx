@@ -39,7 +39,7 @@ const CheckboxGroup = Checkbox.Group;
 // - 定義類型
 type SelectType = { value: string; label: string; };
 type FileContentType = { [key: string]: string; };
-type ProcessedFieldsType = { name: string; value: string; the_surrounding_words: string; regular_expression_match: string, regular_expression_formula: string, gpt_value: string }; 
+type ProcessedFieldsType = { name: string; value: string; the_surrounding_words: string; regular_expression_match: string, regular_expression_formula: string, gpt_value: string, pre_normalize_value?: string }; 
 type ProcessedListType = {
     processed: ProcessedFieldsType[];
 }
@@ -408,6 +408,7 @@ const labelData = () => {
             regular_expression_match: "",
             regular_expression_formula: "",
             gpt_value: "",
+            pre_normalize_value: ""
         };
         
           // 使用 Object.keys 在這個示例對象上，以獲取所有的鍵

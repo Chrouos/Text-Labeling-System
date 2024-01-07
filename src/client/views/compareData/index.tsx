@@ -30,7 +30,7 @@ import type { CheckboxValueType } from 'antd/es/checkbox/Group';
 import type { CheckboxChangeEvent } from 'antd/es/checkbox';
 type SelectType = { value: string; label: string; };
 type ProcessedContentType = { fileName:string, content: string; processed?: ProcessedFieldsType[]; };
-type ProcessedFieldsType = { name: string; value: string; the_surrounding_words: string; regular_expression_match: string, regular_expression_formula: string, gpt_value: string };
+type ProcessedFieldsType = { name: string; value: string; the_surrounding_words: string; regular_expression_match: string, regular_expression_formula: string, gpt_value: string, pre_normalize_value?: string };
 
 type ProcessedListType = {
     processed: ProcessedFieldsType[];

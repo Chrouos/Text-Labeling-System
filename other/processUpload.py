@@ -36,7 +36,8 @@ for file_name in files:
                     "the_surrounding_words": "",
                     "regular_expression_match": "",
                     "regular_expression_formula": "",
-                    "gpt_value": ""
+                    "gpt_value": "",
+                    "pre_normalize_value": "",
                 }
                 processed.append(field_dict)
         

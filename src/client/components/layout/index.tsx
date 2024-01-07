@@ -28,7 +28,7 @@ const Layout = () => {
 
         try {
             const response = await defaultHttp.get(loginRoutes.accountList, {},);
-            const defaultTempAccount = response.data[1]
+            const defaultTempAccount = response.data[0]
 
             sessionStorage.setItem('temp-account', defaultTempAccount);
             setCurrentTempAccount(defaultTempAccount)
