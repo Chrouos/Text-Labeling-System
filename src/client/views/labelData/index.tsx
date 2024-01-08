@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import DragSorting from './dragSorting';
 import {
     Card,
@@ -32,6 +32,8 @@ import type { CheckboxChangeEvent } from 'antd/es/checkbox';
 import type { CheckboxValueType } from 'antd/es/checkbox/Group';
 import { storedHeaders } from '../../utils/storedHeaders';
 import { useAccount } from '../../store/accountContext';
+import HighlightArea from './highlightArea';
+import { BiSolidObjectsHorizontalRight } from 'react-icons/bi';
 
 const { TextArea } = Input;
 const CheckboxGroup = Checkbox.Group;
@@ -51,7 +53,7 @@ type ModalFormatterType = {
     cancel: { onClick: (e?: React.MouseEvent<HTMLButtonElement>) => void; };
     icon: JSX.Element;
     confirmLoading: boolean;
-    message: string;
+    message: any;
 };
 
 const labelData = () => {
@@ -149,10 +151,11 @@ const labelData = () => {
     const [isLockingCheckedAll, setIsLockingCheckedAll] = useState<boolean>(false);
     const [REFormula, setReFormula] = useState<string>("");
     const [textAreaPx, setTextAreaPx] = useState<number | null>(18);
+    const [hightLightList, setHightLightList] = useState<string[]>([]);
+    const [isOpenHightLightList, setIsOpenHightLightList] = useState<boolean>(false);
 
     // - Table Viewer
     const [isTableModalOpen, setIsTableModalOpen] = useState<boolean>(false);
-
 
     const [sortOptions, setSortOptions] = useState<string[]>([]);
     const [defaultCheck, setDefaultCheck] = useState<CheckboxValueType[]>([]);
@@ -215,6 +218,7 @@ const labelData = () => {
     const processOptions = (currentProcessedData: ProcessedFieldsType[]) => {
         const processedNameList = currentProcessedData.map((item:ProcessedFieldsType) => item.name);
         setProcessLabelOptions(processedNameList);
+        setHightLightList(processedNameList);
         setSortOptions(processedNameList);
     };
 
@@ -481,15 +485,6 @@ const labelData = () => {
 
         // @ 確認可以儲存
         addExtractionLabel_all();
-        // const temp_newExtractionLabel = ProcessedFieldsTemplate({name: newExtractionLabel});
-        // setCurrentProcessed(prevLabelFields => [...prevLabelFields, temp_newExtractionLabel]);
-        // setNewExtractionLabel("");
-        // const allLabelOptions = [...processLabelOptions, newExtractionLabel]
-        // setProcessLabelOptions(allLabelOptions);
-        // if (!isLockingCheckedAll){
-        //     setProcessLabelCheckedList([...processLabelCheckedList, newExtractionLabel])
-        // }
-
         
     }
 
@@ -555,77 +550,56 @@ const labelData = () => {
 
         setSortOptions([]);
         setProcessLabelOptions([]);
+        setHightLightList([]);
         setProcessLabelCheckedList([]);
     }
 
     // -v- handle - 對要擷取內容 HighLight, 並修改相關資訊，送到 Fields Input 中
-    const handleTextSelection = (event: React.SyntheticEvent<HTMLTextAreaElement>) => {
+    const currentPageRef = useRef(currentPage);
+    const currentProcessedListRef = useRef(processedList);
+    const currentSelectedLabelRef = useRef(currentSelectedLabel);
+    useEffect(() => {
+        currentPageRef.current = currentPage;
+        currentProcessedListRef.current = processedList;
+        currentSelectedLabelRef.current = currentSelectedLabel;
+    }, [currentPage, processedList, currentSelectedLabel]);
 
+    const handleTextSelection = (selectedText: string, fullText: string, startPosition: number) => {
         function escapeRegExp(text:string) {
             return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         }
 
-        const textarea = event.currentTarget;
-        const selectedText = textarea.value.substring(textarea.selectionStart, textarea.selectionEnd);
-        const indexPage = readTheCurrentPage(currentPage);
-        
-        // @ 更新當前選擇項目欄位的 Input.
         if (selectedText) {
 
-            const updateFields = processedList[indexPage].processed.map ( field => {
-                if (field.name === currentSelectedLabel) { 
+            const indexPage = readTheCurrentPage(currentPageRef.current);
+            const escapedSelectedText = escapeRegExp(selectedText);
+    
+            const surroundingText = fullText.slice(Math.max(0, startPosition - 50), startPosition + selectedText.length + 50);
+            const regex = new RegExp(`([^，。、]*[，。、]*[^，。、]*${escapedSelectedText}[^，。、]*[，。、]*[^，。、]*)`);
+            
+            const match = surroundingText.match(regex);
+            const the_surrounding_words = match ? match[0] : "";
+    
+            const tempCurrentProcessed = currentProcessedListRef.current[indexPage].processed
 
-                    const escapedSelectedText = escapeRegExp(selectedText);
-
-                    // 使用正規表示法擷取前後文
-                    const surroundingText = textarea.value.slice(Math.max(0, textarea.selectionStart - 50), textarea.selectionEnd + 50);
-                    const regex = new RegExp(`([^，。、]*[，。、]*[^，。、]*${escapedSelectedText}[^，。、]*[，。、]*[^，。、]*)`);
-                    // const regex = new RegExp(`([^，。、]*[，。、]*[^，。、]*${selectedText}[^，。、]*[，。、]*[^，。、]*)`);
-                    
-                    const match = surroundingText.match(regex);
-                    const the_surrounding_words = match ? match[0] : "";
-
+            const updateFields = tempCurrentProcessed.map(field => {
+                if (field.name === currentSelectedLabelRef.current) {
                     return { 
                         ...field, 
                         value: selectedText, 
                         the_surrounding_words: the_surrounding_words,
                     };
                 }
-
                 return field;
-            })
+            });
 
-            updateCurrentProcessedToList(updateFields)
+            const temp_ProcessedList = [...currentProcessedListRef.current];
+            temp_ProcessedList[indexPage].processed = updateFields;
+            setProcessedList(temp_ProcessedList);
+    
+            // updateCurrentProcessedToList(updateFields);
         }
-    } 
-
-    // -v- handle - 處理「當前」頁面的 GPT
-    const handleGptAction = () => {
-
-        // setIsLoading(true);
-
-        // const request = {
-        //     processedFields: currentProcessed,
-        //     currentFileContentVisual: currentFileContentVisual,
-        // }
-    
-        // defaultHttp.post(processDataRoutes.gptRetrieve, request)
-        //     .then((response) => {
-    
-        //     type respGPTValue = { name: string, gpt_value: string}
-        //     response.data.labelFields.forEach((responseItem: respGPTValue) => {
-        //         currentProcessed.forEach(processedField => {
-        //             if (processedField.name === responseItem.name) {
-        //                 processedField.gpt_value = responseItem.gpt_value;
-        //             }
-        //         });
-        //     });
-    
-        //     updateCurrentProcessedToList(currentProcessed);
-        // })
-        // .catch((error) => {})
-        // .finally(() => { setIsLoading(false); })
-    }
+    };
 
     // -v- handle - 更新當前檔案 Fields
     async function updateFileFields(keysWithoutProcessed: string[], tempContentList: FileContentType) {
@@ -646,70 +620,6 @@ const labelData = () => {
 
         setCurrentFileContentVisual(tempContentList[result_currentFieldKey])
         return result_currentFieldKey;
-        
-    }
-
-    // -v- handle -v- 處理「全部」頁面的 GPT
-    const handleGptActionAll = () => {
-        // setIsLoading(true);
-        // const request = {
-        //     content:  contentList,
-        //     contentKey: currentContentFieldKey
-        // }
-        // defaultHttp.post(processDataRoutes.gptRetrieve_all, request)
-        //   .then((response) => { 
-        //     type responseList = []
-        //     type responseItem = {name: string, gpt_value: string}
-        //     response.data.map((responseList: responseList, responseListIndex:number) => {
-        //       responseList.map((responseItem: responseItem, responseItemIndex) => {
-        //         contentList[responseListIndex].processed?.forEach((item, index) => {
-        //           if (item.name === responseItem.name){
-        //             item.gpt_value = responseItem.gpt_value;
-        //           }
-        //         })  
-        //       })
-        //     });
-        //     setContentList(contentList)
-        //   })
-        //   .catch((error) => {})
-        //   .finally(() => { setIsLoading(false); })
-    }
-
-    // -v- handle - 處理 RE 
-    const handleReAction = () => {
-
-        // // - Loading Progress
-        // setIsLoading(true);
-
-        // // - Start to Regualr Expression 
-        // const rExp: RegExp = new RegExp(REFormula, 'g');
-
-        // // @ for - 透過迴圈將每一個 contentList 的元素進行擷取
-        // const newProcessedFields = contentList.map((content, index) => {
-            
-        //     const preREContent = content[currentContentFieldKey]; 
-        //     const match = rExp.exec(preREContent);
-        //     if (content['processed'] ) {
-        //         content['processed'].forEach((field: ProcessedFieldsType) => {
-                    
-        //             field.regular_expression_formula = REFormula;
-        //             if(match) field.regular_expression_match = match[1] || "";
-        //             else field.regular_expression_match = "";
-                    
-        //         });
-        //     }
-
-        //     return content;
-        // })
-
-        // async function handleProcessAndUpload() {
-        //     await setContentList(newProcessedFields);
-        //     uploadProcessedFile();
-        // }
-
-        // // - Loading Done
-        // handleProcessAndUpload();
-        // setIsLoading(false);
         
     }
 
@@ -823,6 +733,33 @@ const labelData = () => {
         </> )
     }
 
+    const HightLightEditDisplay = () => {
+        const [tempHightLightList, setTempHightLightList] = useState<string>(hightLightList.join(', '));
+        
+        const handleOk = () => {
+            // 使用暫存的值更新 hightLightList
+            const newList = tempHightLightList.split(',').map(item => item.trim());
+            setHightLightList(newList);
+            setIsOpenHightLightList(false);
+        };
+        
+        return (
+            <Modal
+                open={isOpenHightLightList}
+                title={'HightLight'}
+                okButtonProps={{className: "ant-btn-check"}}
+                onCancel={() => setIsOpenHightLightList(false)}
+                onOk={handleOk} >
+            
+                <TextArea  
+                    value={tempHightLightList} 
+                    onChange={(e) => setTempHightLightList(e.target.value)}
+                    autoSize={{minRows: 8}} />
+            
+            </Modal>
+        );
+    };
+
     // -v- 進入網頁執行一次 Init
     useEffect(() => {
         
@@ -899,14 +836,11 @@ const labelData = () => {
 
                     </div>
 
-                    <TextArea
-                        className='h-full'
-                        showCount
-                        // autoSize={{minRows: 21, maxRows: 21}}
-                        style={{ height: '80vh', marginBottom: 24, fontSize: textAreaPx + 'px' }}
-                        placeholder="欲標記內容"
-                        value={breakSentence_CurrentFileContentVisual()}
-                        onSelect={handleTextSelection} />
+                    <HighlightArea 
+                        textAreaPx={textAreaPx}
+                        textValue={breakSentence_CurrentFileContentVisual()}
+                        onTextSelection={handleTextSelection}
+                        highlightList={hightLightList} />
 
                     <div className='grid grid-cols-11 gap-2'>
                         <div className='col-span-2' style={{ display: 'flex', alignItems: "center"}}> 是否自動斷句：<Switch defaultChecked onChange={(e) => setIsBreakSentence(e)} /> </div>
@@ -959,27 +893,6 @@ const labelData = () => {
                             </Upload>
                         </div>
 
-                        {/* TODO: 之後改 */}
-                        {/* <p className='text-xl mb-4'>Regular Expression</p>
-                        <div className='grid gap-2 mb-4 grid-cols-5'>
-                            <Input 
-                                className='w-full col-span-4'
-                                addonBefore="/" addonAfter="/g"
-                                value={REFormula} onChange={handleREFormulaChange} />
-                            <Button className="w-full ant-btn-action" onClick={handleReAction} icon={<MonitorOutlined />} 
-                                    disabled={currentFileName == null || contentList.length === 0 || currentSelectedLabel === ""}> 
-                                <span className="btn-text" > 正規化 </span> 
-                            </Button>
-                        </div>
-                        
-                        <p className='text-xl mb-4'>GPT</p>
-                        <div className='grid gap-2 mb-4 grid-cols-2'>
-                            <Button className="w-full ant-btn-action mb-4" onClick={handleGptAction}
-                                disabled={currentFileName == null || contentList.length === 0} >GPT搜索(當前頁面)</Button>
-                            <Button className="w-full ant-btn-all_gpt" onClick={handleGptActionAll}
-                                disabled={currentFileName == null || contentList.length === 0} >GPT搜索(全部)</Button>
-                        </div> */}
-                    
                     </Card>
                 </>}
 
@@ -1000,8 +913,15 @@ const labelData = () => {
                             Check all
                         </Checkbox>
 
-                        <Button onClick={() => setIsTableModalOpen(true)} disabled={currentFileName == null || contentList.length === 0}>
+                        <Button className='mr-2' onClick={() => setIsTableModalOpen(true)} disabled={currentFileName == null || contentList.length === 0}>
                             Table Edit
+                        </Button>
+
+                        
+
+                        <Button className='mr-2' disabled={currentFileName == null || contentList.length === 0}
+                            onClick={(e) => {setIsOpenHightLightList(true) }}>
+                            Highlight
                         </Button>
 
                         <CheckboxGroup 
@@ -1080,6 +1000,9 @@ const labelData = () => {
             {modalSetting.message}
         </Modal>
 
+        {/* 高光編輯 */}
+        <HightLightEditDisplay />
+    
         {/* 編輯欄位 */}
         <Modal 
             open={isTableModalOpen} 
@@ -1089,8 +1012,7 @@ const labelData = () => {
             onOk={(e) => {
                 setIsTableModalOpen(false);
                 handleClickOK();
-            }}
-            >
+            }}>
             
             {   <DragSorting 
                     processLabelOptions={processLabelOptions} 

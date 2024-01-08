@@ -261,7 +261,7 @@ const compareData = () => {
     // ----- 換頁
     const changePage = (page: number) => {
         setCurrentPage(page);
-        setProcessedFields(contentList[page]?.processed || []);
+        setProcessedFields(processedList[page]?.processed || []);
     }
 
     // ----- Filter -> 選擇檔案 

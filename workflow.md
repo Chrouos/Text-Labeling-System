@@ -1,3 +1,7 @@
+### 01/08
++ 修改 Excel 下載方式 => 可以比對多個人的 Excel (只要同檔名)
++ 加入關鍵字 HightLight
+
 ### 01/07
 + `git update-index --assume-unchanged ./src/server/config/development.js`
 + `git update-index --assume-unchanged ./src/client/utils/index.tsx`
