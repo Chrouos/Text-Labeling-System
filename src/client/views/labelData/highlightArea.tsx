@@ -4,28 +4,29 @@ interface HighlightAreaProps {
     textAreaPx: number | null;
     textValue: string; 
     onTextSelection: (selectedText: string, fullText: string, startPosition: number) => void; 
-    highlightList: string[]
+    highlightList: string[],
+    highlightColor: string
 }
 
 
-const highlightKeywords = (text:string, keywords: string[]) => {
+const highlightKeywords = (text:string, keywords: string[], highlightColor:string) => {
     const regex = new RegExp(`(${keywords.join('|')})`, 'gi');
         return text.split(regex).map((part, index) => 
             keywords.includes(part.toLowerCase()) ? 
-                <span key={index} style={{ backgroundColor: 'yellow' }}>{part}</span> : 
+                <span key={index} style={{ backgroundColor: highlightColor }}>{part}</span> : 
                 part
     );
 };
     
-const HighlightedText: React.FC<{ text: string, keywords: string[] }> = ({ text, keywords }) => {
+const HighlightedText: React.FC<{ text: string, keywords: string[], highlightColor: string }> = ({ text, keywords, highlightColor }) => {
     return (
     <div>
-        {highlightKeywords(text, keywords)}
+        {highlightKeywords(text, keywords, highlightColor)}
     </div>
     );
 };
 
-const HighlightArea: React.FC<HighlightAreaProps> = ({ textAreaPx, textValue, onTextSelection, highlightList }) => {
+const HighlightArea: React.FC<HighlightAreaProps> = ({ textAreaPx, textValue, onTextSelection, highlightList, highlightColor }) => {
     const divRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -83,7 +84,7 @@ const HighlightArea: React.FC<HighlightAreaProps> = ({ textAreaPx, textValue, on
 
     return (
         <div ref={divRef} style={divTextAreaStyled} >
-            <HighlightedText text={textValue} keywords={highlightList} />
+            <HighlightedText text={textValue} keywords={highlightList} highlightColor={highlightColor} />
         </div>
     );
 };

@@ -750,11 +750,14 @@ const labelData = () => {
                 okButtonProps={{className: "ant-btn-check"}}
                 onCancel={() => setIsOpenHightLightList(false)}
                 onOk={handleOk} >
-            
+                
+                <p className='mb-3'>注意每個想高光的單字需要用逗號隔開！預設為欄位 <br/> 該結果不會儲存到下次使用，請自己筆記</p>
+
                 <TextArea  
+                    style={{fontSize: textAreaPx||18}}
                     value={tempHightLightList} 
                     onChange={(e) => setTempHightLightList(e.target.value)}
-                    autoSize={{minRows: 8}} />
+                    autoSize={{minRows: 10}} />
             
             </Modal>
         );
@@ -840,7 +843,8 @@ const labelData = () => {
                         textAreaPx={textAreaPx}
                         textValue={breakSentence_CurrentFileContentVisual()}
                         onTextSelection={handleTextSelection}
-                        highlightList={hightLightList} />
+                        highlightList={hightLightList}
+                        highlightColor={"rgb(255 229 0 / 83%)"} />
 
                     <div className='grid grid-cols-11 gap-2'>
                         <div className='col-span-2' style={{ display: 'flex', alignItems: "center"}}> 是否自動斷句：<Switch defaultChecked onChange={(e) => setIsBreakSentence(e)} /> </div>
