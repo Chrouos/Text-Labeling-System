@@ -38,6 +38,7 @@ for file_name in files:
                     "regular_expression_formula": "",
                     "gpt_value": "",
                     "pre_normalize_value": "",
+                    "position" :{"start_position": -1, "end_position": -1},
                 }
                 processed.append(field_dict)
         

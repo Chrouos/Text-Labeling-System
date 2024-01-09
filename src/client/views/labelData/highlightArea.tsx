@@ -1,30 +1,44 @@
 import React, { useRef, useEffect, useCallback, createContext, useState } from 'react';
+import { Tooltip } from 'antd';
+
+type TextPositionsType = {key:string, start_position: number, end_position: number}
 
 interface HighlightAreaProps {
     textAreaPx: number | null;
     textValue: string; 
     onTextSelection: (selectedText: string, fullText: string, startPosition: number) => void; 
-    highlightList: string[],
+    highlightList: TextPositionsType[],
     highlightColor: string
 }
-    
-const HighlightedText: React.FC<{ text: string, keywords: string[], highlightColor: string }> = ({ text, keywords, highlightColor }) => {
 
-    const highlightKeywords = (text:string, keywords: string[], highlightColor:string) => {
-        const regex = new RegExp(`(${keywords.join('|')})`, 'gi');
-            return text.split(regex).map((part, index) => 
-                keywords.includes(part.toLowerCase()) ? 
-                    <span key={index} style={{ backgroundColor: highlightColor }}>{part}</span> : 
-                    part
-        );
+// -> To Find the Position
+const HighlightedText_Key: React.FC<{ text: string, highlights: TextPositionsType[], highlightColor: string }> = ({ text, highlights, highlightColor }) => {
+
+    const highlightText = (text: string, highlights: TextPositionsType[], highlightColor: string) => {
+        let lastIndex = 0;
+        let highlightedText = [];
+
+        highlights.forEach((item, index) => {
+            highlightedText.push(text.substring(lastIndex, item.start_position));
+            highlightedText.push(
+                <span key={index} style={{ backgroundColor: highlightColor }}>
+                    {text.substring(item.start_position, item.end_position)}
+                </span>
+            );
+            lastIndex = item.end_position;
+        });
+
+        highlightedText.push(text.substring(lastIndex));
+        return highlightedText;
     };
 
     return (
         <>
-            {highlightKeywords(text, keywords, highlightColor)}
+            {highlightText(text, highlights, highlightColor)}
         </>
     );
 };
+
 
 const HighlightArea: React.FC<HighlightAreaProps> = ({ textAreaPx, textValue, onTextSelection, highlightList, highlightColor }) => {
     const divRef = useRef<HTMLDivElement>(null);
@@ -84,7 +98,7 @@ const HighlightArea: React.FC<HighlightAreaProps> = ({ textAreaPx, textValue, on
 
     return (
         <div ref={divRef} style={divTextAreaStyled} >
-            <HighlightedText text={textValue} keywords={highlightList} highlightColor={highlightColor} />
+            <HighlightedText_Key text={textValue} highlights={highlightList} highlightColor={highlightColor} />
         </div>
     );
 };

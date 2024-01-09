@@ -39,9 +39,17 @@ const { TextArea } = Input;
 const CheckboxGroup = Checkbox.Group;
 
 // - 定義類型
+type TextPositionsType = {key:string, start_position: number, end_position: number}
 type SelectType = { value: string; label: string; };
 type FileContentType = { [key: string]: string; };
-type ProcessedFieldsType = { name: string; value: string; the_surrounding_words: string; regular_expression_match: string, regular_expression_formula: string, gpt_value: string, pre_normalize_value?: string }; 
+type ProcessedFieldsType = { 
+    name: string; 
+    value: string; the_surrounding_words: string; 
+    regular_expression_match: string, regular_expression_formula: string, 
+    gpt_value: string, 
+    pre_normalize_value?: string,
+    position: {start_position: number, end_position: number}
+}; 
 type ProcessedListType = {
     processed: ProcessedFieldsType[];
 }
@@ -70,7 +78,7 @@ const labelData = () => {
     const navigate = useNavigate();
 
     const [isLoading, setIsLoading] = useState(false);
-    const [isVisible, setIsVisible] = useState<boolean[]>([false, true, false, true, false]);
+    const [isVisible, setIsVisible] = useState<boolean[]>([false, true, false, true, false, true]);
     const chooseIsVisible = (index: number) => {
         return (event: React.MouseEvent<HTMLElement>) => {
             const newIsVisible = [...isVisible];
@@ -151,7 +159,10 @@ const labelData = () => {
     const [isLockingCheckedAll, setIsLockingCheckedAll] = useState<boolean>(false);
     const [REFormula, setReFormula] = useState<string>("");
     const [textAreaPx, setTextAreaPx] = useState<number | null>(18);
+
+    // - HightLight
     const [hightLightList, setHightLightList] = useState<string[]>([]);
+    const [hightLightPositionList, setHightLightPositionList] = useState<TextPositionsType[]>([]);
     const [isOpenHightLightList, setIsOpenHightLightList] = useState<boolean>(false);
 
     // - Table Viewer
@@ -215,11 +226,15 @@ const labelData = () => {
     }
 
     // -v- void - 根據 process 讀取要顯示的 Label
-    const processOptions = (currentProcessedData: ProcessedFieldsType[]) => {
+    const processOptions = async (currentProcessedData: ProcessedFieldsType[]) => {
         const processedNameList = currentProcessedData.map((item:ProcessedFieldsType) => item.name);
         setProcessLabelOptions(processedNameList);
-        setHightLightList(processedNameList);
         setSortOptions(processedNameList);
+
+        // - hight light
+        if (hightLightList.length == 0){
+            setHightLightList(processedNameList);
+        }
     };
 
 
@@ -403,29 +418,29 @@ const labelData = () => {
     }
 
     // -v- autoVariable -v- 自動生成
-    const ProcessedFieldsTemplate = <T extends Partial<ProcessedFieldsType>>(fields: T): ProcessedFieldsType => {
+    // const ProcessedFieldsTemplate = <T extends Partial<ProcessedFieldsType>>(fields: T): ProcessedFieldsType => {
 
-        const exampleProcessedFields: ProcessedFieldsType = {
-            name: "",
-            value: "",
-            the_surrounding_words: "",
-            regular_expression_match: "",
-            regular_expression_formula: "",
-            gpt_value: "",
-            pre_normalize_value: ""
-        };
+    //     const exampleProcessedFields: ProcessedFieldsType = {
+    //         name: "",
+    //         value: "",
+    //         the_surrounding_words: "",
+    //         regular_expression_match: "",
+    //         regular_expression_formula: "",
+    //         gpt_value: "",
+    //         pre_normalize_value: ""
+    //     };
         
-          // 使用 Object.keys 在這個示例對象上，以獲取所有的鍵
-        const defaultFields = Object.keys(exampleProcessedFields).reduce((acc, key) => {
-            acc[key as keyof ProcessedFieldsType] = "";
-            return acc;
-        }, {} as ProcessedFieldsType);
+    //       // 使用 Object.keys 在這個示例對象上，以獲取所有的鍵
+    //     const defaultFields = Object.keys(exampleProcessedFields).reduce((acc, key) => {
+    //         acc[key as keyof ProcessedFieldsType] = "";
+    //         return acc;
+    //     }, {} as ProcessedFieldsType);
 
-        return {
-            ...defaultFields,
-            ...fields
-        };
-    }
+    //     return {
+    //         ...defaultFields,
+    //         ...fields
+    //     };
+    // }
 
     // void - 更新 currentProcessed 到指定 index of processedList 
     const updateCurrentProcessedToList = (updatedProcessedFields: ProcessedFieldsType[]) => {
@@ -451,6 +466,7 @@ const labelData = () => {
         const keysWithoutProcessed = Object.keys(contentList[indexPage]); // = file -v- 裡面的所有欄位 (LIST)
         await updateFileFields(keysWithoutProcessed, contentList[indexPage]);
         setCurrentPage(page);
+        
 
         // @ 若沒有鎖定
         if (!isLockingCheckedAll) {
@@ -571,23 +587,32 @@ const labelData = () => {
 
         if (selectedText) {
 
+            
             const indexPage = readTheCurrentPage(currentPageRef.current);
             const escapedSelectedText = escapeRegExp(selectedText);
     
+            // @ 前後文
             const surroundingText = fullText.slice(Math.max(0, startPosition - 50), startPosition + selectedText.length + 50);
             const regex = new RegExp(`([^，。、]*[，。、]*[^，。、]*${escapedSelectedText}[^，。、]*[，。、]*[^，。、]*)`);
-            
             const match = surroundingText.match(regex);
             const the_surrounding_words = match ? match[0] : "";
-    
-            const tempCurrentProcessed = currentProcessedListRef.current[indexPage].processed
 
+            // @ 位置 Position
+            const start_position = startPosition;
+            const end_position = startPosition + escapedSelectedText.length;
+
+            // @ 存擋
+            const tempCurrentProcessed = currentProcessedListRef.current[indexPage].processed
             const updateFields = tempCurrentProcessed.map(field => {
                 if (field.name === currentSelectedLabelRef.current) {
                     return { 
                         ...field, 
                         value: selectedText, 
                         the_surrounding_words: the_surrounding_words,
+                        position:{
+                            start_position: start_position,
+                            end_position: end_position
+                        }
                     };
                 }
                 return field;
@@ -733,6 +758,38 @@ const labelData = () => {
         </> )
     }
 
+    
+    async function  findHightLightListPosition() {
+        
+        const findKeywordPositions = (keywords: string[], text: string) => {
+            const positions = [];
+
+            for (const keyword of keywords) {
+                let startIndex = 0;
+                while (startIndex < text.length) {
+                    const index = text.indexOf(keyword, startIndex);
+                    if (index !== -1) {
+                        positions.push({ key: keyword, start_position: index, end_position: index + keyword.length});
+                        startIndex = index + 1; // 移動到找到關鍵字的下一個位置繼續尋找
+                    } else {
+                        break; // 如果在文本中找不到關鍵字，則終止迴圈
+                    }
+                }
+            }
+            return positions;
+        };
+        
+        const positions = findKeywordPositions(hightLightList, breakSentence_CurrentFileContentVisual());
+        positions.sort((a, b) => a.start_position - b.start_position);
+        setHightLightPositionList(positions);
+    }
+
+    useEffect(() => {
+        setTimeout(() => {
+            findHightLightListPosition()    
+        }, 1000);
+    }, [currentFileContentVisual, hightLightList])
+
     const HightLightEditDisplay = () => {
         const [tempHightLightList, setTempHightLightList] = useState<string>(hightLightList.join(', '));
         
@@ -777,7 +834,8 @@ const labelData = () => {
             navigate(webRoutes.labelData);
         }
     }, [navigate, storedAccount]);
-    
+
+    // ---------------------------------------------------------------------------------------------------- Return 
 
     return (
     <Spin spinning={isLoading} tip="Loading...">
@@ -790,6 +848,7 @@ const labelData = () => {
             <Button onClick={chooseIsVisible(2)} className={isVisible[2] ? 'ant-btn-none' : 'ant-btn-notChosen'}>Add Extraction Label</Button>
             <Button onClick={chooseIsVisible(3)} className={isVisible[3] ? 'ant-btn-none' : 'ant-btn-notChosen'}>Extraction Labels</Button>
             <Button onClick={chooseIsVisible(4)} className={isVisible[4] ? 'ant-btn-none' : 'ant-btn-notChosen'}>Labels View</Button>
+            <Button onClick={chooseIsVisible(5)} className={isVisible[5] ? 'ant-btn-none' : 'ant-btn-notChosen'}>TextArea Dashboard</Button>
         </div>
 
         <Row gutter={24}>
@@ -843,7 +902,8 @@ const labelData = () => {
                         textAreaPx={textAreaPx}
                         textValue={breakSentence_CurrentFileContentVisual()}
                         onTextSelection={handleTextSelection}
-                        highlightList={hightLightList}
+                        highlightList={hightLightPositionList}
+                        // highlightList={hightLightList}
                         highlightColor={"rgb(255 229 0 / 83%)"} />
 
                     <div className='grid grid-cols-11 gap-2'>
@@ -896,6 +956,16 @@ const labelData = () => {
                                 <Button type="dashed" className="w-full ant-btn-action" icon={<UploadOutlined />}> <span className="btn-text">Upload File </span> </Button>
                             </Upload>
                         </div>
+
+                    </Card>
+                </>}
+
+
+                {isVisible[5] && <>
+                    <Card bordered={false} className="w-full cursor-default grid gap-4 mb-4"  title={"TextArea Dashboard"} 
+                        extra={ <Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(5)}></Button>}>                
+
+                        
 
                     </Card>
                 </>}

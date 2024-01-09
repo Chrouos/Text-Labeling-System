@@ -323,12 +323,24 @@ exports.addExtractionLabel_all = async (req, res) => {
 
             // - 有資料
             if(item.processed) {
-                item.processed.push({name: labelToAdd, value: "", the_surrounding_words: "", regular_expression_match: "", regular_expression_formula: "", gpt_value: "", pre_normalize_value: ""});
+                item.processed.push({
+                    name: labelToAdd, value: "", the_surrounding_words: "", 
+                    regular_expression_match: "", regular_expression_formula: "", 
+                    gpt_value: "", 
+                    pre_normalize_value: "", 
+                    position: {start_position: -1, end_position: -1}
+                });
             } 
             
             // - 無資料
             else {
-                item.processed = [{name: labelToAdd, value: "", the_surrounding_words: "", regular_expression_match: "", regular_expression_formula: "", gpt_value: "", pre_normalize_value: ""}];
+                item.processed = [{
+                    name: labelToAdd, value: "", the_surrounding_words: "", 
+                    regular_expression_match: "", regular_expression_formula: "", 
+                    gpt_value: "", 
+                    pre_normalize_value: "", 
+                    position: {start_position: -1, end_position: -1}
+                }];
             }
             return JSON.stringify(item);
         }).join('\n');
