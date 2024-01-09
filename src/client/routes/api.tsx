@@ -7,6 +7,7 @@ export const processDataRoutes = {
   fetchFileContent: `${API_URL}/processData/fetchFileContent`,
   uploadProcessedFile: `${API_URL}/processData/uploadProcessedFile`,
   fetchProcessedContent: `${API_URL}/processData/fetchProcessedContent`,
+  fetchProcessedContentByUser: `${API_URL}/processData/fetchProcessedContentByUser`,
   downloadProcessedFile: `${API_URL}/processData/downloadProcessedFile`,
   deleteFile: `${API_URL}/processData/deleteFile`,
   addExtractionLabel_all: `${API_URL}/processData/addExtractionLabel_all`,

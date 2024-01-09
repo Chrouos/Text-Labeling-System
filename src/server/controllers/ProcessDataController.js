@@ -2,6 +2,8 @@ const ConfigCrypto = require('../tools/ConfigCrypto')
 const { OpenAI } = require("openai");
 
 const ExcelJS = require('exceljs');
+var Nzh = require("nzh");
+var nzhhk = require("nzh/hk");
 
 const fs = require('fs')
 const path = require('path')
@@ -142,6 +144,33 @@ exports.fetchProcessedContent = async (req, res) => {
         const fileName = req.body.fileName
         
         const { processedDirectory, filesDirectory } = determineDirectories(req.headers);
+
+        // @ 2. 過濾出.txt 檔案且名稱符合 req.body.fileName
+        const files = fs.readdirSync(processedDirectory); 
+        const targetFile = files.find(file => path.extname(file) === '.txt' && file === fileName);
+
+        // @ 3. 讀取檔案
+        if (targetFile) {
+            const filePath = path.join(processedDirectory, targetFile);
+            const fileContent = fs.readFileSync(filePath, 'utf8');
+            const responseData = fileContent.trim().split('\n').map(line => JSON.parse(line));
+            res.status(200).send(responseData);
+        } 
+
+        else res.status(404).send('File not found.');
+    }
+    catch (error) {
+        res.status(500).send(`[uploadTheFile] Error : ${error.message || error}`);
+    }
+}
+
+// -------------------------------------------------- 讀取 processed -> Content
+exports.fetchProcessedContentByUser = async (req, res) => {
+    try {
+        // @ 1. 讀取檔案
+        const fileName = req.body.fileName
+        const selectedFormatUser = req.body.selectedFormatUser
+        const processedDirectory = path.join(__dirname, '..', 'uploads', 'processed', selectedFormatUser);
 
         // @ 2. 過濾出.txt 檔案且名稱符合 req.body.fileName
         const files = fs.readdirSync(processedDirectory); 
@@ -753,38 +782,91 @@ exports.formatterProcessedContent = async (req, res) => {
 
         // - Data Preparation
         const fileName = req.body.fileName;
+        const selectedFormatUser = req.body.selectedFormatUser;
         const preFormatterLabel = req.body.preFormatterLabel;
         const preFormatterMethod = req.body.preFormatterMethod;
 
-        var responseData = [];
+        if (preFormatterMethod == 'number') {
+            var responseData = [];
 
-        // @ 1. 讀取資料 ../uploads/processed
-        const processedDirectory = path.join(__dirname, '..', 'uploads', 'processed');
-        const files = fs.readdirSync(processedDirectory); 
+            // @ 1. 讀取資料 ../uploads/processed
+            const processedDirectory = path.join(__dirname, '..', 'uploads', 'processed', selectedFormatUser);
+            const files = fs.readdirSync(processedDirectory);
 
-        // @ 2. 過濾出.txt 檔案且名稱符合 req.body.fileName
-        const targetFile = files.find(file => path.extname(file) === '.txt' && file === req.body.fileName);
+            // @ 2. 過濾出.txt 檔案且名稱符合 req.body.fileName
+            const targetFile = files.find(file => path.extname(file) === '.txt' && file === fileName);
+            function replaceChineseNumbers(input) {
+                const mapping = {
+                    '零': '零', '壹': '一', '貳': '二', '參': '三', '肆': '四', 
+                    '伍': '五', '陸': '六', '柒': '七', '捌': '八', '玖': '九', 
+                    '拾': '十', '0': '零', '1': '一', '2': '二', '3': '三', 
+                    '4': '四', '5': '五', '6': '六', '7': '七', '8': '八', '9': '九'
+                };
+                let output = '';
+                for (let char of input) {
+                    output += mapping[char] || char;
+                }
+                return output;
+            }
 
-        // @ 3. 讀取檔案
-        if (targetFile) {
-            const filePath = path.join(processedDirectory, targetFile);
-            const fileContent = fs.readFileSync(filePath, 'utf8');
-            const jsonLines = fileContent.trim().split('\n').map(line => JSON.parse(line));
+            function convertToChineseNumber(input) {
+                const digits = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+                const units = ['', '十', '百', '千'];
+                let output = input.replace(/\d+/g, (num) => {
+                if (num === '10') return '十';
+                let chineseNumber = '';
+                let reverseDigits = [...num].reverse();
 
-            jsonLines.forEach(jsonLine => {
-                jsonLine.processed.forEach(item => {
-                    if (item.name === fileName) {
-                        item.regular_expression_match = translate(item.value);
+                reverseDigits.forEach((digit, index) => {
+                    if (digit !== '0') {
+                        chineseNumber = digits[digit] + units[index] + chineseNumber;
+                    } else if (!chineseNumber.startsWith('零')) {
+                        chineseNumber = '零' + chineseNumber;
                     }
                 });
-                responseData.push(jsonLine);
-            });
-            
-        } else {
-            res.status(404).send('File not found.');
+                    return chineseNumber.replace(/^一十/, '十').replace(/零+$/, '');
+                });
+                return output;
+            }
+
+            function translateV2(numberString) {
+                const step1 = numberString.replace(/,|元/g, '');
+                if (/^\d+$/.test(step1)) {
+                    return Number(step1);
+                } else {
+                    const step2 = convertToChineseNumber(step1)
+                    const step3 = replaceChineseNumbers(step2);
+                    return Number(nzhhk.decodeS(step3));
+                }
+                
+            }
+
+            // @ 3. 讀取檔案
+            if (targetFile) {
+                const filePath = path.join(processedDirectory, targetFile);
+                const fileContent = fs.readFileSync(filePath, 'utf8');
+                const jsonLines = fileContent.trim().split('\n').map(line => JSON.parse(line));
+
+                jsonLines.forEach(jsonLine => {
+                    jsonLine.processed.forEach(item => {
+                        if (item.name == preFormatterLabel) {
+                            item.pre_normalize_value = item.value
+                            item.value = translateV2(item.value);
+                        }
+                    });
+                    responseData.push(JSON.stringify(jsonLine));
+                });
+
+                // 將更新後的內容寫回原始檔案
+                fs.writeFileSync(filePath, responseData.join('\n'));
+            } else {
+                res.status(404).send('File not found.');
+            }
+
+            res.status(200).send(responseData);
+        } else if (preFormatterMethod == 'ROC') {
+            // TODO: 轉換日期
         }
-        
-        res.status(200).send(responseData);
     } catch (error) {
         res.setHeader('Content-Type', 'text/plain; charset=utf-8');
         res.status(500).send(`[formatterProcessedContent] Error : ${error.message || error}`);
@@ -854,6 +936,7 @@ exports.downloadExcel = async (req, res) => {
         });
     }
     catch (error) {
+        console.log(error);
         res.setHeader('Content-Type', 'text/plain; charset=utf-8');
         res.status(500).send(`[downloadProcessedFile] Error : ${error.message || error}`);
     }

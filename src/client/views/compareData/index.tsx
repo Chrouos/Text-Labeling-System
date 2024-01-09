@@ -71,6 +71,7 @@ const compareData = () => {
     const [processedFieldsLabelList, setProcessedLabelList] = useState<SelectType[]>([])
     const [userList, setUserList] = useState<SelectType[]>([])
     const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+    const [selectedFormatUser, setSelectedFormatUser] = useState<string>("");
     const [currentSelectedLabel, setCurrentSelectedLabel] = useState<string>("");
     const [formattersMethodList, ] = useState<SelectType[]>([
         { label: "轉換為金錢(Integer)", value: "number" },
@@ -108,7 +109,7 @@ const compareData = () => {
         }
     }
 
-    // ----- API -> 讀取 processed 的內容
+    // ----- API -> 讀取 FileContent 的內容
     const fetchProcessedFileContent = async (fileName: string) => {
         try {
             setIsLoading(true); 
@@ -119,9 +120,23 @@ const compareData = () => {
             // @ 處理 file 內容
             const file_response = await defaultHttp.post(processDataRoutes.fetchFileContent, request, { headers: storedHeaders() });
             setContentList(file_response.data);
+        } catch (error) {
+            handleErrorResponse(error);
+        } finally {
+            setIsLoading(false);
+        }
+    }
 
+     // ----- API -> 讀取 processed 的內容
+    const fetchProcessedContentByUser = async () => {
+        try {
+            setIsLoading(true); 
+            const request = {
+                fileName: currentFileName,
+                selectedFormatUser: selectedFormatUser,
+            }
             // @ 處理 processed 內容
-            const processed_response = await defaultHttp.post(processDataRoutes.fetchProcessedContent, request, { headers: storedHeaders() });
+            const processed_response = await defaultHttp.post(processDataRoutes.fetchProcessedContentByUser, request, { headers: storedHeaders() });
             if (processed_response?.data?.[readTheCurrentPage(currentPage)]?.processed) {
                 setProcessedList(processed_response.data);
                 const processedData = processed_response.data[readTheCurrentPage(currentPage)].processed;
@@ -157,6 +172,7 @@ const compareData = () => {
             setIsLoading(true); 
             const request = {
                 fileName: currentFileName as string,
+                selectedFormatUser: selectedFormatUser as string,
                 preFormatterLabel: currentSelectedLabel as string,
                 preFormatterMethod: currentFormatterMethod as string
             }
@@ -296,6 +312,12 @@ const compareData = () => {
         }
     };
 
+    const handleFormatUserChange = (value: string) => {
+        if (value) {
+            setSelectedFormatUser(value);
+        }
+    };
+
     // ----- TODO: 比較距離
     const compareData = () => {
 
@@ -402,6 +424,13 @@ const compareData = () => {
         }
     }, [currentFileName])
 
+    // ----- 偵測 
+    useEffect(() => {
+        if (selectedFormatUser != "") {
+            fetchProcessedContentByUser();
+        }
+    }, [selectedFormatUser])
+
     // -------------------------------------------------- Visual Return
     return (
         <Spin spinning={isLoading} tip="Loading...">
@@ -423,7 +452,14 @@ const compareData = () => {
                         extra={<Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(0)}></Button>} >
                         <p>1. 將金錢轉換為數字 (如: 一千元 → 1000, 一萬500元 → 10500)</p>
                         <p>2. 將日期轉成固定結構 (89年4月5日 → 89-04, 2021年08月12日15時 → 111-08)</p>
-
+                        <Select
+                            className='w-full mb-2 mt-4 col-span-2' 
+                            allowClear
+                            style={{ width: '100%' }}
+                            placeholder="Select the user"
+                            onChange={handleFormatUserChange}
+                            options={userList}
+                            />
                         <div className='w-full grid gap-4 grid-cols-2'>
                             <Select 
                                 className='w-full mb-4 mt-4' 
@@ -450,7 +486,8 @@ const compareData = () => {
                         <div className='w-full grid mt-4'>
                             <Button className='w-full' 
                                     onClick={updateFormatters} 
-                                    disabled={currentSelectedLabel == "" || currentFormatterMethod == "" || currentFileName == ""}> 
+                                    disabled={currentSelectedLabel == "" || currentFormatterMethod == "" || currentFileName == "" || selectedFormatUser == ""}
+                                    > 
                                 轉換 
                             </Button>
                         </div>
@@ -506,7 +543,7 @@ const compareData = () => {
                                 <Button
                                         onClick={downloadExcel} 
                                         disabled={currentFileName == null || selectedUsers.length == 0}> 
-                                    下載csv
+                                    下載Excel
                                 </Button>
                             </div>
                         </Card>
