@@ -160,7 +160,7 @@ exports.fetchProcessedContent = async (req, res) => {
         else res.status(404).send('File not found.');
     }
     catch (error) {
-        res.status(500).send(`[uploadTheFile] Error : ${error.message || error}`);
+        res.status(500).send(`[fetchProcessedContent] Error : ${error.message || error}`);
     }
 }
 
@@ -187,7 +187,7 @@ exports.fetchProcessedContentByUser = async (req, res) => {
         else res.status(404).send('File not found.');
     }
     catch (error) {
-        res.status(500).send(`[uploadTheFile] Error : ${error.message || error}`);
+        res.status(500).send(`[fetchProcessedContentByUser] Error : ${error.message || error}`);
     }
 }
 
@@ -511,7 +511,7 @@ exports.test_GPT = async (req, res) => {
         res.status(500).send(response.choices[0].message);
     } catch (error) {
         res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-        res.status(500).send(`[gptRetrieve] Error : ${error.message || error}`);
+        res.status(500).send(`[test_GPT] Error : ${error.message || error}`);
     }
 }
 
@@ -706,81 +706,8 @@ function splitText(text, input_token=2048, now_token = 0) {
     return textList_result;
 }
 
-
-const chinese_to_int = (text) => {
-    const num_dict = {
-        '零': '0', '０': '0',
-        '壹': '1', '一': '1', '１': '1',
-        '貳': '2', '二': '2', '２': '2',
-        '參': '3', '三': '3', '叁': '3', '参': '3', '３': '3',
-        '肆': '4', '四': '4', '４': '4',
-        '伍': '5', '五': '5', '５': '5',
-        '陸': '6', '六': '6', '６': '6',
-        '柒': '7', '七': '7', '７': '7',
-        '捌': '8', '八': '8', '８': '8',
-        '玖': '9', '九': '9', '９': '9',
-    };
-    
-    let process_text = '';
-    
-    for(let i = 0; i < text.length; i++) {
-        const char_index = text[i];
-        if (num_dict.hasOwnProperty(char_index)) {
-            process_text += num_dict[char_index];
-        } else {
-            process_text += char_index;
-        }
-    }
-    
-    return process_text;
-}
-
 function is_number(n) {
     return !isNaN(parseFloat(n)) && isFinite(n);
-}
-
-const translate = (input_str) => {
-
-    // @ 未輸入任何東西
-    if (input_str === "") { return 0; }
-
-    // @ 變數區
-    let result_arabic = 0;
-    let temp_arabic = '';
-    let unit = 1;  // 單位（十、百、千、萬）
-
-    // @ 轉換中文到數字
-    for (let index = 0; index < input_str.length; index ++) {
-    
-    const char = input_str[index];
-
-    // @ 若不需要轉換就先存起來跳過
-    if (is_number(char)) temp_arabic += char
-
-    else {
-    
-        if (temp_arabic === '') temp_arabic = 1
-
-            // @ 選擇單位
-            if (char === '萬') unit = 10000
-            else if (char === '仟' || char === '千') unit = 1000;
-            else if (char === '佰' || char === '百') unit = 100;
-            else if (char === '拾' || char === '十') unit = 10;
-            else unit = 1;
-
-            result_arabic += temp_arabic * unit;
-            temp_arabic = '';
-
-        }
-
-    }
-
-    if (temp_arabic != '') {
-        const isAbbreviation = (is_number(input_str[input_str.length - 2])) ? 1 : unit / 10
-        result_arabic += parseInt(temp_arabic) * (isAbbreviation);
-    }
-
-    return result_arabic;
 }
 
 exports.formatterProcessedContent = async (req, res) => {
@@ -889,13 +816,14 @@ exports.formatterProcessedContent = async (req, res) => {
 exports.downloadExcel = async (req, res) => {
     try {
         const selectedUsers = req.body.selectedUsers;
+        const fileName = req.body.fileName;
 
         // 創建一個新的 Excel 工作簿
         const workbook = new ExcelJS.Workbook();
 
         for (let selectedUser of selectedUsers) {
-            const processedDirectory = path.join(__dirname, '..', 'uploads', 'processed', selectedUser, req.body.fileName);
-            const filesDirectory = path.join(__dirname, '..', 'uploads', 'files', selectedUser, req.body.fileName);
+            const processedDirectory = path.join(__dirname, '..', 'uploads', 'processed', selectedUser, fileName);
+            const filesDirectory = path.join(__dirname, '..', 'uploads', 'files', selectedUser, fileName);
             if (fs.existsSync(processedDirectory) && fs.existsSync(filesDirectory)) {
                 const fileLines = fs.readFileSync(filesDirectory, 'utf-8').split('\n').filter(line => line.trim());
                 const processedLines = fs.readFileSync(processedDirectory, 'utf-8').split('\n').filter(line => line.trim());
@@ -946,11 +874,10 @@ exports.downloadExcel = async (req, res) => {
                 console.log(`Excel file ${excelFileName} was deleted.`);
             }
         });
-    }
-    catch (error) {
+    } catch (error) {
         console.log(error);
         res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-        res.status(500).send(`[downloadProcessedFile] Error : ${error.message || error}`);
+        res.status(500).send(`[downloadExcel] Error : ${error.message || error}`);
     }
 }
 
@@ -979,6 +906,6 @@ exports.fetchUsers = async (req, res) => {
         res.status(200).send(result);
     }
     catch (error) {
-        res.status(500).send(`[fetchUploadsFileName] Error : ${error.message || error}`);
+        res.status(500).send(`[fetchUsers] Error : ${error.message || error}`);
     }
 }

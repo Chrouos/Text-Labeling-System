@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import DragSorting from './dragSorting';
 import {
     Card,
@@ -19,11 +19,11 @@ import {
 import { message } from 'antd';
 import type { UploadProps } from 'antd';
 import type { UploadFile } from 'antd/es/upload/interface';
-import { UploadOutlined, CheckOutlined, DeleteOutlined, CloseOutlined, DownloadOutlined, DownOutlined, UpOutlined, ClearOutlined, MonitorOutlined} from '@ant-design/icons';
+import { UploadOutlined, CheckOutlined, DeleteOutlined, CloseOutlined, DownloadOutlined, ClearOutlined} from '@ant-design/icons';
 
 
 import { webRoutes } from '../../routes/web';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { defaultHttp } from '../../utils/http';
 import { processDataRoutes } from '../../routes/api';
 import { handleErrorResponse } from '../../utils';
@@ -33,7 +33,6 @@ import type { CheckboxValueType } from 'antd/es/checkbox/Group';
 import { storedHeaders } from '../../utils/storedHeaders';
 import { useAccount } from '../../store/accountContext';
 import HighlightArea from './highlightArea';
-import { BiSolidObjectsHorizontalRight } from 'react-icons/bi';
 
 const { TextArea } = Input;
 const CheckboxGroup = Checkbox.Group;
@@ -258,7 +257,7 @@ const labelData = () => {
         }
     };
 
-    // -v- API - 下載檔案
+    // -v- API - 下載txt
     const downloadProcessedFile = async () => {
 
         setIsLoading(true);
@@ -288,6 +287,53 @@ const labelData = () => {
                 if (match && match[1]) {
                     fileName = match[1];
                 }
+            }
+
+            a.download = fileName || "";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+
+            // - 釋放 URL
+            URL.revokeObjectURL(url);
+        })
+        .catch((error) => {
+            handleErrorResponse(error);
+        }).finally(() => { setIsLoading(false); });
+    }
+
+    // -v- API - 下載Excel
+    const downloadExcel = async () => {
+        setIsLoading(true); 
+        const request = {
+            fileName: currentFileName as string,
+            selectedUsers: [storedAccount],
+        }
+
+        defaultHttp.post(processDataRoutes.downloadExcel, request, {
+            headers: storedHeaders(),
+            responseType: 'blob'
+        })
+        .then((response) => {
+
+            // @ 假設 response.data 為 binary
+            const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }); // 請根據你的檔案類型調整 MIME 類型
+            const url = URL.createObjectURL(blob);
+
+            // @ 創建一個 <a> 標籤來觸發檔案下載
+            const a = document.createElement('a');
+            a.href = url;
+
+            // @ 增加下載時間
+            const contentDisposition = response.headers['content-disposition'];
+            let fileName = currentFileName;
+            if (contentDisposition) {
+                console.log(contentDisposition)
+                const match = contentDisposition.match(/filename="?(.*?)"?$/);
+                if (match && match[1]) {
+                    fileName = match[1];
+                }
+                console.log(fileName)
             }
 
             a.download = fileName || "";
@@ -924,13 +970,20 @@ const labelData = () => {
                         extra={<Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(0)}></Button>}>                
 
                         <p className='text-xl mb-4'>Operation File</p>
-                        <div className='grid gap-2 mb-4 grid-cols-3'>
+                        <div className='grid gap-2 mb-4 grid-cols-2'>
                             <Button 
                                 className="w-full ant-btn-check"  
                                 icon={<DownloadOutlined />} 
                                 disabled={!currentFileName}
                                 onClick={downloadProcessedFile}> 
-                                <span className="btn-text">Down</span> 
+                                <span className="btn-text">Download txt</span> 
+                            </Button>
+                            <Button 
+                                className="w-full ant-btn-downloadExcel"
+                                icon={<DownloadOutlined />} 
+                                disabled={!currentFileName}
+                                onClick={downloadExcel}> 
+                                <span className="btn-text">Download Excel</span> 
                             </Button>
                             <Button 
                                 className="w-full ant-btn-delete"  
@@ -956,17 +1009,13 @@ const labelData = () => {
                                 <Button type="dashed" className="w-full ant-btn-action" icon={<UploadOutlined />}> <span className="btn-text">Upload File </span> </Button>
                             </Upload>
                         </div>
-
                     </Card>
                 </>}
 
 
                 {isVisible[5] && <>
-                    <Card bordered={false} className="w-full cursor-default grid gap-4 mb-4"  title={"TextArea Dashboard"} 
-                        extra={ <Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(5)}></Button>}>                
-
-                        
-
+                    <Card bordered={false} className="w-full cursor-default grid gap-4 mb-4"  title={"TextArea Dashboard"}
+                        extra={ <Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(5)}></Button>}>
                     </Card>
                 </>}
 

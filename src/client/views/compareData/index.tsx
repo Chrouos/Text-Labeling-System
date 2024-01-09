@@ -7,14 +7,12 @@ import {
     Button,
     Select,
     Pagination,
-    Input,
     Typography,
     Checkbox,
     Switch,
-    SelectProps,
 } from 'antd';
 import { message } from 'antd';
-import { UploadOutlined, CheckOutlined, DeleteOutlined, CloseOutlined, DownloadOutlined, DownOutlined, UpOutlined, ClearOutlined, MonitorOutlined} from '@ant-design/icons';
+import { CloseOutlined } from '@ant-design/icons';
 
 import { handleErrorResponse } from '../../utils';
 import { defaultHttp } from '../../utils/http';
@@ -189,7 +187,6 @@ const compareData = () => {
 
     // ----- API -> 下載Excel
     const downloadExcel = async () => {
-
         setIsLoading(true); 
         const request = {
             fileName: currentFileName as string,

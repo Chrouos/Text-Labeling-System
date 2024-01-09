@@ -10,6 +10,18 @@
     background-color: #00b70600 !important;
 }
 
+.ant-btn-downloadExcel {
+    color: #2892b9;
+    border-color: #2892b9;
+    background-color: transparent;
+}
+
+.ant-btn-downloadExcel:hover {
+    color: #59c4ea !important;
+    border-color: #59c4ea !important;
+    background-color: #00b70600 !important;
+}
+
 .ant-upload {
     width: 100% !important;
 }
