@@ -7,22 +7,22 @@ interface HighlightAreaProps {
     highlightList: string[],
     highlightColor: string
 }
-
-
-const highlightKeywords = (text:string, keywords: string[], highlightColor:string) => {
-    const regex = new RegExp(`(${keywords.join('|')})`, 'gi');
-        return text.split(regex).map((part, index) => 
-            keywords.includes(part.toLowerCase()) ? 
-                <span key={index} style={{ backgroundColor: highlightColor }}>{part}</span> : 
-                part
-    );
-};
     
 const HighlightedText: React.FC<{ text: string, keywords: string[], highlightColor: string }> = ({ text, keywords, highlightColor }) => {
+
+    const highlightKeywords = (text:string, keywords: string[], highlightColor:string) => {
+        const regex = new RegExp(`(${keywords.join('|')})`, 'gi');
+            return text.split(regex).map((part, index) => 
+                keywords.includes(part.toLowerCase()) ? 
+                    <span key={index} style={{ backgroundColor: highlightColor }}>{part}</span> : 
+                    part
+        );
+    };
+
     return (
-    <div>
-        {highlightKeywords(text, keywords, highlightColor)}
-    </div>
+        <>
+            {highlightKeywords(text, keywords, highlightColor)}
+        </>
     );
 };
 

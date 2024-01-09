@@ -751,7 +751,7 @@ const labelData = () => {
                 onCancel={() => setIsOpenHightLightList(false)}
                 onOk={handleOk} >
                 
-                <p className='mb-3'>注意每個想高光的單字需要用逗號隔開！預設為欄位 <br/> 該結果不會儲存到下次使用，請自己筆記</p>
+                <p className='mb-3'>注意每個想高光的單字需要用逗號隔開！預設為欄位，可自行修改 <br/> 該結果不會儲存到下次使用，請自己筆記</p>
 
                 <TextArea  
                     style={{fontSize: textAreaPx||18}}
