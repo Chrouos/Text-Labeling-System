@@ -419,6 +419,7 @@ const compareData = () => {
         if (currentFileName != null) {
             fetchUsers();
         }
+        setSelectedFormatUser("");
     }, [currentFileName])
 
     // ----- 偵測 
@@ -426,6 +427,8 @@ const compareData = () => {
         if (selectedFormatUser != "") {
             fetchProcessedContentByUser();
         }
+        setCurrentSelectedLabel('');
+        setCurrentFormatterMethod('');
     }, [selectedFormatUser])
 
     // -------------------------------------------------- Visual Return
@@ -455,6 +458,7 @@ const compareData = () => {
                             style={{ width: '100%' }}
                             placeholder="Select the user"
                             onChange={handleFormatUserChange}
+                            value={selectedFormatUser}
                             options={userList}
                             />
                         <div className='w-full grid gap-4 grid-cols-2'>
@@ -492,7 +496,7 @@ const compareData = () => {
                 </>}
 
                 { isVisible[2] && <>
-                    <Card title="Transform File" className="w-full cursor-default grid gap-4 mb-4" 
+                    <Card title="Compare" className="w-full cursor-default grid gap-4 mb-4" 
                         extra={<Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(2)}></Button>} >
                     
                         {/* 比較與 ground truth 的差距 */}

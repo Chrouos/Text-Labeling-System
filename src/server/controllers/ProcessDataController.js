@@ -804,9 +804,75 @@ exports.formatterProcessedContent = async (req, res) => {
 
             res.status(200).send(responseData);
         } else if (preFormatterMethod == 'ROC') {
+            var responseData = [];
             // TODO: 轉換日期
+            const extractDate = (str) => {
+                const regex = /(\d{2,4})年(\d{1,2})月(\d{1,2})?日?/;
+                const match = str.match(regex);
+            
+                if (match) {
+                    let year = parseInt(match[1]);
+                    const month = match[2];
+                    const day = match[3] ? match[3] : '15';
+            
+                    // 如果年份大於 1911，則從年份中減去 1911
+                    if (year > 1911) {
+                        year -= 1911;
+                    }
+            
+                    return `${year}年${month}月${day}日`;
+                } else {
+                    return null;
+                }
+            };
+
+            const extractText = (str) => {
+                str = str.replace(/\([^)]*\)/g, '').replace(/\（[^)]*\）/g, '');
+                const regex = /\S+/g;
+                const matches = str.match(regex);
+            
+                // 直接連接匹配到的字串，不使用空格分隔
+                return matches ? matches.join('') : '';
+            };
+
+            // @ 1. 讀取資料 ../uploads/processed
+            const processedDirectory = path.join(__dirname, '..', 'uploads', 'processed', selectedFormatUser);
+            const files = fs.readdirSync(processedDirectory);
+
+            // @ 2. 過濾出.txt 檔案且名稱符合 req.body.fileName
+            const targetFile = files.find(file => path.extname(file) === '.txt' && file === fileName);
+            // @ 3. 讀取檔案
+            if (targetFile) {
+                const filePath = path.join(processedDirectory, targetFile);
+                const fileContent = fs.readFileSync(filePath, 'utf8');
+                const jsonLines = fileContent.trim().split('\n').map(line => JSON.parse(line));
+
+                jsonLines.forEach(jsonLine => {
+                    jsonLine.processed.forEach(item => {
+                        if (item.name == preFormatterLabel) {
+                            item.pre_normalize_value = item.value
+                            const formatDate = extractDate(extractText(item.value));
+                            console.log(formatDate);
+                            if (formatDate) {
+                                item.value = formatDate;
+                            } else {
+                                item.value = "";
+                            }
+                        }
+                    });
+                    
+                    responseData.push(JSON.stringify(jsonLine));
+                });
+
+                // 將更新後的內容寫回原始檔案
+                fs.writeFileSync(filePath, responseData.join('\n'));
+            } else {
+                res.status(404).send('File not found.');
+            }
+            res.status(200).send(responseData);
         }
     } catch (error) {
+        console.log(error);
         res.setHeader('Content-Type', 'text/plain; charset=utf-8');
         res.status(500).send(`[formatterProcessedContent] Error : ${error.message || error}`);
     }
