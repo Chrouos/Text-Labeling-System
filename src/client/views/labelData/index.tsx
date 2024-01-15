@@ -39,6 +39,12 @@ const CheckboxGroup = Checkbox.Group;
 
 // - 定義類型
 type TextPositionsType = {key:string, start_position: number, end_position: number}
+type HighLightPositionListType = {
+    key: TextPositionsType[],
+    self: TextPositionsType[],
+    comparator: TextPositionsType[]
+}
+
 type SelectType = { value: string; label: string; };
 type FileContentType = { [key: string]: string; };
 type ProcessedFieldsType = { 
@@ -104,37 +110,6 @@ const labelData = () => {
     const [currentFileContentVisual, setCurrentFileContentVisual] = useState<string>("");
     const [isBreakSentence, setIsBreakSentence] = useState<boolean>(true);
     const [isAutoSave, setIsAutoSave] = useState<boolean>(true);
-    const breakSentence_CurrentFileContentVisual = () => {
-
-        if (isBreakSentence == false)
-            return currentFileContentVisual
-
-    
-        let sentences = [];
-        let sentence = "";
-        let currentFileContentArray = Array.from(currentFileContentVisual);
-    
-        for (let i = 0; i < currentFileContentArray.length; i++) {
-
-
-            let char = currentFileContentArray[i];
-            let nextChar = currentFileContentArray[i + 1]; // 取得下一個字符
-            let add_char = char;
-    
-            if (char === '（' || char === '(' ) {
-                add_char = '\t' + add_char
-            }
-    
-            sentence += add_char;
-            if ((char === '。' || char === '？' || char === '！') && !(nextChar === '「' || nextChar === '」')) {
-                sentences.push(sentence + "\n\t");
-                sentence = "";
-            }
-
-        }
-        if (sentence) sentences.push(sentence); // 確保最後一句也被加入
-        return sentences.join("");
-    }
     
     const readTheCurrentPage = (page: number) => {
         const fileIndex = (page > 0) ? page - 1 : 0;
@@ -160,9 +135,11 @@ const labelData = () => {
     const [textAreaPx, setTextAreaPx] = useState<number | null>(18);
 
     // - HightLight
-    const [hightLightList, setHightLightList] = useState<string[]>([]);
-    const [hightLightPositionList, setHightLightPositionList] = useState<TextPositionsType[]>([]);
-    const [isOpenHightLightList, setIsOpenHightLightList] = useState<boolean>(false);
+    const [hightLightPositionList, setHightLightPositionList] = useState<HighLightPositionListType>()
+    const [hightLightList_key, setHightLightList_key] = useState<string[]>([]); // 關鍵字
+    const [hightLightPositionList_self, setHightLightPositionList_self] = useState<TextPositionsType[]>([]);
+    const [hightLightPositionList_key, setHightLightPositionList_key] = useState<TextPositionsType[]>([]);
+    const [isOpenHightLightListModal, setIsOpenHightLightListModal] = useState<boolean>(false);
 
     // - Table Viewer
     const [isTableModalOpen, setIsTableModalOpen] = useState<boolean>(false);
@@ -231,8 +208,8 @@ const labelData = () => {
         setSortOptions(processedNameList);
 
         // - hight light
-        if (hightLightList.length == 0){
-            setHightLightList(processedNameList);
+        if (hightLightList_key.length == 0){
+            setHightLightList_key(processedNameList);
         }
     };
 
@@ -333,7 +310,6 @@ const labelData = () => {
                 if (match && match[1]) {
                     fileName = match[1];
                 }
-                console.log(fileName)
             }
 
             a.download = fileName || "";
@@ -612,7 +588,7 @@ const labelData = () => {
 
         setSortOptions([]);
         setProcessLabelOptions([]);
-        setHightLightList([]);
+        setHightLightList_key([]);
         setProcessLabelCheckedList([]);
     }
 
@@ -803,9 +779,49 @@ const labelData = () => {
         
         </> )
     }
-
     
-    async function  findHightLightListPosition() {
+    // ---------------------------------------------------------------------------------------------------- Highlight
+
+    // -v- 處理換行和位置資訊
+    // const processTextAndHighlights = (textValue: string, isOpenHighLight: boolean[]) => {
+    //     if (!isBreakSentence) return { text: textValue, hightLightList: hightLightPositionList };
+    
+    //     let adjustedHighlights:TextPositionsType[] = JSON.parse(JSON.stringify(highLightPositionList));
+    //     let sentences = "";
+    //     let currentFileContentArray = Array.from(textValue);
+        
+    //     // 遍歷每一個字符
+    //     for (let i = 0; i < currentFileContentArray.length; i++) {
+
+    //         let char = currentFileContentArray[i];
+    //         let nextChar = currentFileContentArray[i + 1];
+    //         let addChar = char;
+    //         let positionAdjustment = 0;
+    
+    //         if ((char === '。' || char === '？' || char === '！') && !(nextChar === '「' || nextChar === '」')) {
+    //             positionAdjustment = 2; // 換行和制表符
+    //             sentences += addChar + "\n\t";
+    //         } else {
+    //             sentences += addChar;
+    //         }
+    
+    //         // 更新 highlightList 中的位置
+    //         adjustedHighlights = adjustedHighlights.map(highlight => {
+    //             if (highlight.start_position >= sentences.length -2 ) {
+    //                 return {
+    //                     ...highlight,
+    //                     start_position: highlight.start_position + positionAdjustment,
+    //                     end_position: highlight.end_position + positionAdjustment
+    //                 };
+    //             }
+    //             return highlight;
+    //         });
+    //     }
+    
+    //     return { text: sentences, highlights: adjustedHighlights };
+    // };
+
+    const findHightLightListPosition_key = () => {
         
         const findKeywordPositions = (keywords: string[], text: string) => {
             const positions = [];
@@ -825,33 +841,61 @@ const labelData = () => {
             return positions;
         };
         
-        const positions = findKeywordPositions(hightLightList, breakSentence_CurrentFileContentVisual());
+        const positions = findKeywordPositions(hightLightList_key, currentFileContentVisual);
         positions.sort((a, b) => a.start_position - b.start_position);
-        setHightLightPositionList(positions);
+        setHightLightPositionList_key(positions);
+    }
+    useEffect(() => { setTimeout(() => { findHightLightListPosition_key() }, 1000);}, [currentFileContentVisual, hightLightList_key])
+
+    const  findHightLightListPosition_self = () => {
+        
+        if (processedList.length != 0) {
+
+            let temp_hightLightPositionList_self:TextPositionsType[] = [];
+            const currentProcessed = processedList[readTheCurrentPage(currentPage)].processed;
+            currentProcessed.map(item => {
+
+                const itemKeyPosition = {
+                    key: item.value,
+                    start_position: item.position.start_position,
+                    end_position: item.position.end_position
+                }
+                temp_hightLightPositionList_self.push(itemKeyPosition);
+            })
+            setHightLightPositionList_self(temp_hightLightPositionList_self)
+
+        }
     }
 
-    useEffect(() => {
-        setTimeout(() => {
-            findHightLightListPosition()    
-        }, 1000);
-    }, [currentFileContentVisual, hightLightList])
+    useEffect(() => { 
+        
+        setTimeout(() => { 
+            findHightLightListPosition_key()
+            // findHightLightListPosition_self()
+        }, 500);
+    }, [currentFileContentVisual, processedList, hightLightList_key, currentPage])
+
 
     const HightLightEditDisplay = () => {
-        const [tempHightLightList, setTempHightLightList] = useState<string>(hightLightList.join(', '));
+        const [tempHightLightList, setTempHightLightList] = useState<string>(hightLightList_key.join(', '));
         
         const handleOk = () => {
-            // 使用暫存的值更新 hightLightList
-            const newList = tempHightLightList.split(',').map(item => item.trim());
-            setHightLightList(newList);
-            setIsOpenHightLightList(false);
+            // 移除多餘的空白和逗號
+            const newList = tempHightLightList
+                            .split(',')
+                            .map(item => item.trim())
+                            .filter(item => item !== '');
+        
+            setHightLightList_key(newList);
+            setIsOpenHightLightListModal(false);
         };
         
         return (
             <Modal
-                open={isOpenHightLightList}
+                open={isOpenHightLightListModal}
                 title={'HightLight'}
                 okButtonProps={{className: "ant-btn-check"}}
-                onCancel={() => setIsOpenHightLightList(false)}
+                onCancel={() => setIsOpenHightLightListModal(false)}
                 onOk={handleOk} >
                 
                 <p className='mb-3'>注意每個想高光的單字需要用逗號隔開！預設為欄位，可自行修改 <br/> 該結果不會儲存到下次使用，請自己筆記</p>
@@ -946,11 +990,16 @@ const labelData = () => {
 
                     <HighlightArea 
                         textAreaPx={textAreaPx}
-                        textValue={breakSentence_CurrentFileContentVisual()}
+                        textValue={currentFileContentVisual}
                         onTextSelection={handleTextSelection}
-                        highlightList={hightLightPositionList}
-                        // highlightList={hightLightList}
-                        highlightColor={"rgb(255 229 0 / 83%)"} />
+                        highlightList={hightLightPositionList_key}
+                        // highlightList={hightLightPositionList_self}
+                        highlightColor={{
+                            key: "rgb(255 229 0 / 83%)",
+                            self: "rgb(255 229 0 / 83%)",
+                            comparator: "rgb(255 229 0 / 83%)"
+                        }}
+                        isBreakSentence={isBreakSentence} />
 
                     <div className='grid grid-cols-11 gap-2'>
                         <div className='col-span-2' style={{ display: 'flex', alignItems: "center"}}> 是否自動斷句：<Switch defaultChecked onChange={(e) => setIsBreakSentence(e)} /> </div>
@@ -1043,7 +1092,7 @@ const labelData = () => {
                         
 
                         <Button className='mr-2' disabled={currentFileName == null || contentList.length === 0}
-                            onClick={(e) => {setIsOpenHightLightList(true) }}>
+                            onClick={(e) => {setIsOpenHightLightListModal(true) }}>
                             Highlight
                         </Button>
 

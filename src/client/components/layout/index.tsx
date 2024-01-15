@@ -49,6 +49,12 @@ const Layout = () => {
         }
     }
 
+    const onClickAccount = () => {
+        const temp_account = sessionStorage.getItem('tempAccount') || ""; 
+        setAccount("");
+        setAccount(temp_account);
+    }
+
     // -v- Filter - 選擇檔案 
     const accountList_selectedFilterOption = (input: string, option?: { label: string; value: string }) => {
         if (!option) { return false; }
