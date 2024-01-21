@@ -927,7 +927,7 @@ exports.downloadExcel = async (req, res) => {
         const excelContent = fs.readFileSync(excelFilePath);
     
         // 設置 HTTP 響應頭部
-        res.setHeader('Content-Disposition', `attachment; filename=${excelFileName}`);
+        res.setHeader('Content-Disposition', `attachment; filename=${excelFileName}`); 
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         // 發送文件內容
         res.send(excelContent);
