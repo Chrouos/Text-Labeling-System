@@ -91,7 +91,7 @@ const labelData = () => {
     const navigate = useNavigate();
 
     const [isLoading, setIsLoading] = useState(false);
-    const [isVisible, setIsVisible] = useState<boolean[]>([false, true, false, true, false, true]);
+    const [isVisible, setIsVisible] = useState<boolean[]>([false, true, false, true, false, false]);
     const chooseIsVisible = (index: number) => {
         return (event: React.MouseEvent<HTMLElement>) => {
             const newIsVisible = [...isVisible];
@@ -527,6 +527,7 @@ const labelData = () => {
     const chooseTheFile = (selectedValue: string) => {
         setCurrentFileName(selectedValue);
         fetchProcessedContent(selectedValue);
+        // fetchComparatorProcessedContent(selectedValue, currentComparator)
         fetchMatchFileUser(selectedValue);
     }
     
@@ -997,6 +998,7 @@ const labelData = () => {
 
     useEffect(() => {
 
+        setIsLoading(true);
         findHighLightListPosition_key().then(key => {
             findHighLightListPosition_self().then(self => {
                 findHighLightListPosition_comparator().then(comparator => {
@@ -1009,16 +1011,16 @@ const labelData = () => {
                             self: self,
                             comparator: [],
                         })
+
+                        setIsLoading(false);
                     }).catch(error => { console.log("processTextAndHighlights", error) });
 
                 }).catch(error => {console.log("findHighLightListPosition_comparator", error)})
             }).catch(error => {console.log("findHighLightListPosition_self", error)});
         }).catch(error => {console.log("findHighLightListPosition_key", error)});
         
-    }, [currentFileContentVisual, isBreakSentence, highLightList_key, processedList, comparatorProcessedList])
-    useEffect(()=>{
-        // console.log(highLightPositionList)
-    }, [highLightPositionList])
+    }, [currentFileContentVisual, isBreakSentence, highLightList_key, processedList, comparatorProcessedList, currentFileName])
+   
 
 
     const [tempHighLightList, setTempHighLightList] = useState<string>(highLightList_key.join(', '));
