@@ -1019,8 +1019,7 @@ const labelData = () => {
             }).catch(error => {console.log("findHighLightListPosition_self", error)});
         }).catch(error => {console.log("findHighLightListPosition_key", error)});
         
-    }, [currentFileContentVisual, isBreakSentence, highLightList_key, processedList, comparatorProcessedList, currentFileName])
-   
+    }, [currentFileContentVisual, isBreakSentence, highLightList_key, processedList, comparatorProcessedList, currentFileName, currentPage])
 
 
     const [tempHighLightList, setTempHighLightList] = useState<string>(highLightList_key.join(', '));
