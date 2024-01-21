@@ -90,7 +90,6 @@ const labelData = () => {
     const [messageApi, contextHolder] = message.useMessage();
     const navigate = useNavigate();
 
-    const [isLoading, setIsLoading] = useState(false);
     const [isVisible, setIsVisible] = useState<boolean[]>([false, true, false, true, false, false]);
     const chooseIsVisible = (index: number) => {
         return (event: React.MouseEvent<HTMLElement>) => {
@@ -110,6 +109,16 @@ const labelData = () => {
         message: "This is the default modal setting."
     });
     const closeModal = () => { setModalSetting((prevState: ModalFormatterType) => ({...prevState, isOpen: false})) } 
+
+    // - Loading
+    const [isLoading, setIsLoading] = useState(false);
+    const [loadingStates, setLoadingStates] = useState({    // 儲存各個API的loading狀態
+
+    });
+    useEffect(() => {   // 當任何一個API的loading狀態改變時，更新isLoading
+        const anyLoading = Object.values(loadingStates).some(state => state);
+        setIsLoading(anyLoading);
+    }, [loadingStates]);
 
     // - File List
     const [currentPage, setCurrentPage] = useState(1);
@@ -165,12 +174,15 @@ const labelData = () => {
     const [sortOptions, setSortOptions] = useState<string[]>([]);
     const [defaultCheck, setDefaultCheck] = useState<CheckboxValueType[]>([]);
 
+    
+
+
     // -------------------------------------------------- API Settings
 
     // ----- API - 抓取在 uploads/files 裡面的資料名稱
     const fetchFilesName = async () => {
         try {
-            setIsLoading(true);
+            setLoadingStates(prev => ({ ...prev, fetchFilesName: true }));
             const response = await defaultHttp.get(processDataRoutes.fetchUploadsFileName, {
                 headers: storedHeaders()
             });
@@ -179,14 +191,13 @@ const labelData = () => {
         } catch (error) {
             handleErrorResponse(error);
         } finally {
-            setIsLoading(false);
+            setLoadingStates(prev => ({ ...prev, fetchFilesName: false }));
         }
     }
     
     // ----- API - 讀取 processed 的內容
     const fetchProcessedContent = async (fileName: string) => {
-        setIsLoading(true); 
-    
+        setLoadingStates(prev => ({ ...prev, fetchProcessedContent: true }));
         const request = {
             fileName: fileName,
         };
@@ -215,15 +226,15 @@ const labelData = () => {
         } catch (error) {
             handleErrorResponse(error);
         } finally {
-            setIsLoading(false);
+            setLoadingStates(prev => ({ ...prev, fetchProcessedContent: false }));
         }
     }
 
 
     // ----- API - 讀取 comparator processed 的內容
     const fetchComparatorProcessedContent = async (fileName: string, currentComparator: string) => {
-        setIsLoading(true); 
-    
+         
+        setLoadingStates(prev => ({ ...prev, fetchComparatorProcessedContent: true }));
         const request = {
             fileName: fileName,
             comparator_userName: currentComparator
@@ -240,14 +251,14 @@ const labelData = () => {
         } catch (error) {
             handleErrorResponse(error);
         } finally {
-            setIsLoading(false);
+            setLoadingStates(prev => ({ ...prev, fetchComparatorProcessedContent: false }));
         }
     }
 
     // ----- API - 抓取 fetchFilesName 後擁有該檔名的所有user
     const fetchMatchFileUser = async (fileName:string) => {
         try {
-            setIsLoading(true);
+            setLoadingStates(prev => ({ ...prev, fetchMatchFileUser: true }));
             const request = {
                 fileName: fileName as string,
             }
@@ -261,7 +272,7 @@ const labelData = () => {
         } catch (error) {
             handleErrorResponse(error);
         } finally {
-            setIsLoading(false);
+            setLoadingStates(prev => ({ ...prev, fetchMatchFileUser: false }));
         }
     }
 
@@ -278,11 +289,10 @@ const labelData = () => {
         }
     };
 
-
     // ----- API - 存擋
     const uploadProcessedFile = async () => {
-        setIsLoading(true);
-
+        
+        setLoadingStates(prev => ({ ...prev, uploadProcessedFile: true }));
         const request = {
             fileName: currentFileName,
             processed: processedList
@@ -295,14 +305,14 @@ const labelData = () => {
         } catch (error) {
             handleErrorResponse(error);
         } finally {
-            setIsLoading(false);
+            setLoadingStates(prev => ({ ...prev, uploadProcessedFile: false }));
         }
     };
 
     // ----- API - 下載txt
     const downloadProcessedFile = async () => {
 
-        setIsLoading(true);
+        setLoadingStates(prev => ({ ...prev, downloadProcessedFile: true }));
 
         const request = {
             fileName: currentFileName,
@@ -341,12 +351,12 @@ const labelData = () => {
         })
         .catch((error) => {
             handleErrorResponse(error);
-        }).finally(() => { setIsLoading(false); });
+        }).finally(() => { setLoadingStates(prev => ({ ...prev, uploadProcessedFile: false }));  });
     }
 
     // ----- API - 下載Excel
     const downloadExcel = async () => {
-        setIsLoading(true); 
+         
         let selectedUsers = [storedAccount]
         if (storedAccount == "admin") {
             selectedUsers = [account]
@@ -359,7 +369,7 @@ const labelData = () => {
             fileName: currentFileName as string,
             selectedUsers: selectedUsers,
         }
-
+        setLoadingStates(prev => ({ ...prev, downloadExcel: true }));
         defaultHttp.post(processDataRoutes.downloadExcel, request, {
             headers: storedHeaders(),
             responseType: 'blob'
@@ -395,14 +405,14 @@ const labelData = () => {
         })
         .catch((error) => {
             handleErrorResponse(error);
-        }).finally(() => { setIsLoading(false); });
+        }).finally(() => { setLoadingStates(prev => ({ ...prev, downloadExcel: false })); });
     }
 
     // ----- API - 刪除檔案
     const deleteFile = async () => {
         try {
-            setIsLoading(true);
-    
+            
+            setLoadingStates(prev => ({ ...prev, deleteFile: true }));
             const request = { fileName: currentFileName };
             const response = await defaultHttp.post(processDataRoutes.deleteFile, request, { headers: storedHeaders() });
             await fetchFilesName();
@@ -411,15 +421,15 @@ const labelData = () => {
         } catch (error) {
             handleErrorResponse(error);
         } finally {
-            setIsLoading(false);
+            setLoadingStates(prev => ({ ...prev, deleteFile: false }));
         }
     }
     
 
     // ----- API - 增加欄位
     const addExtractionLabel_all = async () => {
-        setIsLoading(true);
-    
+        
+        setLoadingStates(prev => ({ ...prev, addExtractionLabel_all: true }));
         const request = {
             fileName: currentFileName,
             labelToAdd: newExtractionLabel
@@ -433,14 +443,14 @@ const labelData = () => {
         } catch (error) {
             handleErrorResponse(error);
         } finally {
-            setIsLoading(false);
+            setLoadingStates(prev => ({ ...prev, addExtractionLabel_all: false }));
         }
     }
 
     // ----- API - 刪除欄位
     const removeLabel_all = async (labelToRemove: string) => {
-        setIsLoading(true);
-
+        
+        setLoadingStates(prev => ({ ...prev, removeLabel_all: true }));
         const request = {
             fileName: currentFileName,
             labelToRemove: labelToRemove
@@ -454,7 +464,7 @@ const labelData = () => {
         } catch (error) {
             handleErrorResponse(error);
         } finally {
-            setIsLoading(false);
+            setLoadingStates(prev => ({ ...prev, removeLabel_all: false }));
         }
     }
 
@@ -491,10 +501,8 @@ const labelData = () => {
 
     // ----- 排序 & 預設勾選 儲存
     const handleClickOK = async () => {
-        
+        setLoadingStates(prev => ({ ...prev, handleClickOK: true }));
         setProcessLabelCheckedList(defaultCheck);
-        setIsLoading(true); 
-
         const request = {
             fileName: currentFileName,
             sortOptions: sortOptions,
@@ -508,7 +516,7 @@ const labelData = () => {
         } catch (error) {
             handleErrorResponse(error);
         } finally {
-            setIsLoading(false);
+            setLoadingStates(prev => ({ ...prev, handleClickOK: false }));
         }
     }
 
@@ -560,14 +568,14 @@ const labelData = () => {
     // ----- 增加處理欄位
     const addExtractionLabel = () => {
 
-        setIsLoading(true);
+        
 
         // @ 檢查是否重複
         const indexPage = readTheCurrentPage(currentPage);
         const isExisting = processedList[indexPage].processed.some(processedField => processedField.name === newExtractionLabel );
         if (isExisting) {
             messageApi.error(`${newExtractionLabel} 已經存在了.`);
-            setIsLoading(false);
+            
             return;
         }
 
@@ -998,7 +1006,7 @@ const labelData = () => {
 
     useEffect(() => {
 
-        setIsLoading(true);
+        setLoadingStates(prev => ({ ...prev, TextAreaHighlight: true }));
         findHighLightListPosition_key().then(key => {
             findHighLightListPosition_self().then(self => {
                 findHighLightListPosition_comparator().then(comparator => {
@@ -1011,8 +1019,8 @@ const labelData = () => {
                             self: self,
                             comparator: [],
                         })
-
-                        setIsLoading(false);
+                        setLoadingStates(prev => ({ ...prev, TextAreaHighlight: false }));
+                        
                     }).catch(error => { console.log("processTextAndHighlights", error) });
 
                 }).catch(error => {console.log("findHighLightListPosition_comparator", error)})
