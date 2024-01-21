@@ -684,8 +684,13 @@ const labelData = () => {
             const the_surrounding_words = match ? match[0] : "";
 
             // @ 位置 Position
-            const start_position = startPosition;
-            const end_position = startPosition + escapedSelectedText.length;
+            let start_position = startPosition;
+            let end_position = startPosition + escapedSelectedText.length;
+
+            if (currentContentFieldKey != "cleanJudgement"){
+                start_position = -1
+                end_position = -1
+            }
 
             // @ 存擋
             const tempCurrentProcessed = currentProcessedListRef.current[indexPage].processed
@@ -1006,26 +1011,40 @@ const labelData = () => {
 
     useEffect(() => {
 
-        setLoadingStates(prev => ({ ...prev, TextAreaHighlight: true }));
-        findHighLightListPosition_key().then(key => {
-            findHighLightListPosition_self().then(self => {
-                findHighLightListPosition_comparator().then(comparator => {
+        if (currentContentFieldKey == "cleanJudgement"){
+            setLoadingStates(prev => ({ ...prev, TextAreaHighlight: true }));
+            findHighLightListPosition_key().then(key => {
+                findHighLightListPosition_self().then(self => {
+                    findHighLightListPosition_comparator().then(comparator => {
 
-                    const _highLightPositionList:HighLightPositionListType  = { key: key, self: self, comparator: comparator, }
-                    processTextAndHighlights(_highLightPositionList).then(result => {
-                        setCurrentTextAreaVisual(result.text);
-                        setHighLightPositionList(result.highlights || {
-                            key: key,
-                            self: self,
-                            comparator: [],
-                        })
-                        setLoadingStates(prev => ({ ...prev, TextAreaHighlight: false }));
-                        
-                    }).catch(error => { console.log("processTextAndHighlights", error) });
+                        const _highLightPositionList:HighLightPositionListType  = { key: key, self: self, comparator: comparator, }
+                        processTextAndHighlights(_highLightPositionList).then(result => {
+                            setCurrentTextAreaVisual(result.text);
+                            setHighLightPositionList(result.highlights || {
+                                key: key,
+                                self: self,
+                                comparator: comparator,
+                            })
+                            setLoadingStates(prev => ({ ...prev, TextAreaHighlight: false }));
+                            
+                        }).catch(error => { console.log("processTextAndHighlights", error) });
 
-                }).catch(error => {console.log("findHighLightListPosition_comparator", error)})
-            }).catch(error => {console.log("findHighLightListPosition_self", error)});
-        }).catch(error => {console.log("findHighLightListPosition_key", error)});
+                    }).catch(error => {console.log("findHighLightListPosition_comparator", error)})
+                }).catch(error => {console.log("findHighLightListPosition_self", error)});
+            }).catch(error => {console.log("findHighLightListPosition_key", error)});
+        }
+        else {
+            processTextAndHighlights({ key: [], self: [], comparator: [] }).then(result => {
+                setCurrentTextAreaVisual(result.text);
+                setHighLightPositionList({
+                    key: [],
+                    self: [],
+                    comparator: [],
+                })
+                setLoadingStates(prev => ({ ...prev, TextAreaHighlight: false }));
+                
+            }).catch(error => { console.log("processTextAndHighlights", error) });
+        }
         
     }, [currentFileContentVisual, isBreakSentence, highLightList_key, processedList, comparatorProcessedList, currentFileName, currentPage])
 
@@ -1053,9 +1072,6 @@ const labelData = () => {
             navigate(webRoutes.labelData);
         }
     }, [navigate, storedAccount]);
-
-
-    // useEffect(() => {console.log(isOpenHighLight)}, [isOpenHighLight])
 
     // ---------------------------------------------------------------------------------------------------- Return 
 
@@ -1125,7 +1141,7 @@ const labelData = () => {
                         onTextSelection={handleTextSelection}
                         highlightList={highLightPositionList}
                         highlightColor={{
-                            key: "#92929256",
+                            key: "#ffdd0064",
                             self: "#fc27275c",
                             comparator: "#4b69ff51"
                         }}
