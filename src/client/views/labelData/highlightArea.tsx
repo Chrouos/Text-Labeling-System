@@ -1,90 +1,118 @@
-import React, { useRef, useEffect, useCallback, createContext, useState } from 'react';
+import React, { useRef, useEffect, useCallback, createContext, useState, useContext} from 'react';
 import { Tooltip } from 'antd';
 
+import './highlightArea.css'
+
 type TextPositionsType = {key:string, start_position: number, end_position: number}
-type highlightColor = {key: string, self: string, comparator: string}
+type highlightColor = {key: string, self: string, comparator: string, [key: string]: string}
 type HighLightPositionListType = {
     key: TextPositionsType[],
     self: TextPositionsType[],
-    comparator: TextPositionsType[]
+    comparator: TextPositionsType[],
+    [key: string]: TextPositionsType[]
 }
-
-// -> To Find the Position
-const HighlightedText_Key: React.FC<{ text: string, highlights: TextPositionsType[], highlightColor: highlightColor }> = ({ text, highlights, highlightColor }) => {
-
-    const highlightText = (temp_text: string, highlights: TextPositionsType[], highlightColor: highlightColor) => {
-
-        // const text = temp_text.replace(/\n/g, '').replace(/\s/g, '');
-
-        let lastIndex = 0;
-        let highlightedText = [];
-        highlights.forEach((item, index) => {
-            highlightedText.push(text.substring(lastIndex, item.start_position));
-            highlightedText.push(
-                <span key={index} style={{ backgroundColor: highlightColor.key }}>
-                    {text.substring(item.start_position, item.end_position)}
-                </span>
-            );
-            lastIndex = item.end_position;
-        });
-
-        highlightedText.push(text.substring(lastIndex));
-        return highlightedText;
-    };
-
-    return (
-        <>
-            {highlightText(text, highlights, highlightColor)}
-        </>
-    );
-};
-
+type isOpenHighLightType = {
+    key: boolean,
+    self: boolean,
+    comparator: boolean,
+    [key: string]: boolean
+}
 interface HighlightAreaProps {
     textAreaPx: number | null;
     textValue: string; 
     onTextSelection: (selectedText: string, fullText: string, startPosition: number) => void; 
-    highlightList: TextPositionsType[],
+    highlightList: HighLightPositionListType,
     highlightColor: highlightColor,
-    isBreakSentence: boolean
+    isOpenHighLight: isOpenHighLightType
 }
 
+
+
 const HighlightArea: React.FC<HighlightAreaProps> = ({ 
-    textAreaPx, textValue, onTextSelection, highlightList, highlightColor, isBreakSentence }) => {
+    textAreaPx, textValue, onTextSelection, highlightList, highlightColor, isOpenHighLight }) => {
+
+    const currentIsOpenHighLight = isOpenHighLight || {
+        key: false,
+        self: false,
+        comparator: false
+    }
+        
     const divRef = useRef<HTMLDivElement>(null);
+    const [showTooltip, setShowTooltip] = useState(false); // 新增狀態變量
+    useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "z" || event.key === "Z") { // 當按下 Z 鍵時顯示 Tooltip
+                setShowTooltip(true);
+            }
+        };
+    
+        const handleKeyUp = (event: KeyboardEvent) => {
+            if (event.key ) { // 當放開 Z 鍵時隱藏 Tooltip
+                setShowTooltip(false);
+            }
+        };
+    
+        document.addEventListener('keydown', handleKeyDown);
+        document.addEventListener('keyup', handleKeyUp);
+    
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+            document.removeEventListener('keyup', handleKeyUp);
+        };
+    }, []);
 
     useEffect(() => {
-        const handleSelectionChange = () => {
+        const handleMouseUp = () => {
             if (divRef.current && document.contains(divRef.current)) {
                 const selection = window.getSelection();
                 if (selection && selection.rangeCount > 0) {
                     const range = selection.getRangeAt(0);
                     if (divRef.current.contains(range.commonAncestorContainer)) {
-                        const selection = window.getSelection();
-                        if (selection && selection.rangeCount > 0) {
-                            const range = selection.getRangeAt(0);
-                            const selectedText = range.toString();
-                
-                            // 計算選取文本的起始位置
-                            const preCaretRange = range.cloneRange();
-                            preCaretRange.selectNodeContents(divRef.current);
-                            preCaretRange.setEnd(range.startContainer, range.startOffset);
-                            const start = preCaretRange.toString().length;
-                
-                            if (selectedText) {
-                                onTextSelection(selectedText, textValue, start);
+                        const selectedText = range.toString();
+    
+                        // 計算選取文本的起始位置
+                        const preCaretRange = range.cloneRange();
+                        preCaretRange.selectNodeContents(divRef.current);
+                        preCaretRange.setEnd(range.startContainer, range.startOffset);
+                        const start = preCaretRange.toString().length;
+    
+                        if (selectedText) {
+
+                            let accumulation_step = 0
+                            for (let i = 0; i < textValue.length; i++) {
+                                let char = textValue[i];
+                                let nextChar = textValue[i + 1];
+                                if ((char === '。' || char === '？' || char === '！') && !(nextChar === '「' || nextChar === '」') && start > i   ) {
+                                    accumulation_step -= 2
+                                } 
+                                // else if (i >= final_start) break
                             }
+                            // console.log(start, accumulation_step, textValue.length)
+                            onTextSelection(selectedText, textValue, start + accumulation_step ); // - (textValue.length + accumulation_step) 
                         }
                     }
                 }
             }
         };
     
-        document.addEventListener('selectionchange', handleSelectionChange);
+        document.addEventListener('mouseup', handleMouseUp);
     
         return () => {
-            document.removeEventListener('selectionchange', handleSelectionChange);
+            document.removeEventListener('mouseup', handleMouseUp);
         };
-    }, []);
+    }, [textValue]);
+    
+
+    const currentHighlightList = {
+        key: highlightList.key || [],
+        self: highlightList.self || [],
+        comparator: highlightList.comparator || [],
+    }
+    const currentHighlightColor = {
+        key: highlightColor.key || "#ffe60039",
+        self: highlightColor.self || "#ff6d6d46",
+        comparator: highlightColor.comparator || "#4dc6fa45",
+    }
 
     // 定義 div 的樣式
     const divTextAreaStyled = {
@@ -102,73 +130,111 @@ const HighlightArea: React.FC<HighlightAreaProps> = ({
         fontSize: `${textAreaPx || 14}px` // 如果 textAreaPx 為 null，則使用 14px
     };
 
-    const processTextAndHighlights = () => {
-        if (!isBreakSentence) return { text: textValue, highlights: highlightList };
-    
-        let adjustedHighlights:TextPositionsType[] = JSON.parse(JSON.stringify(highlightList));
-        let sentences = "";
-        let currentFileContentArray = Array.from(textValue);
-        
-        // 遍歷每一個字符
-        for (let i = 0; i < currentFileContentArray.length; i++) {
-
-            let char = currentFileContentArray[i];
-            let nextChar = currentFileContentArray[i + 1];
-            let addChar = char;
-            let positionAdjustment = 0;
-    
-            if ((char === '。' || char === '？' || char === '！') && !(nextChar === '「' || nextChar === '」')) {
-                positionAdjustment = 2; // 換行和制表符
-                sentences += addChar + "\n\t";
-            } else {
-                sentences += addChar;
-            }
-    
-            // 更新 highlightList 中的位置
-            adjustedHighlights = adjustedHighlights.map(highlight => {
-                if (highlight.start_position >= sentences.length -2 ) {
-                    return {
-                        ...highlight,
-                        start_position: highlight.start_position + positionAdjustment,
-                        end_position: highlight.end_position + positionAdjustment
-                    };
-                }
-                return highlight;
-            });
-        }
-    
-        return { text: sentences, highlights: adjustedHighlights };
-    };
-    
-
-    const [adjustedHighlights, setAdjustedHighlights] = useState<TextPositionsType[]>([]);
-    const [currentTextValue, setCurrentTextValue] = useState<string>("");
-    useEffect(() => {
-        const processedTextAndHighlight:{text:string, highlights:TextPositionsType[]} = processTextAndHighlights();
-        setCurrentTextValue(processedTextAndHighlight.text)
-        setAdjustedHighlights(processedTextAndHighlight.highlights)
-
-        // console.log(highlightList, processedTextAndHighlight.highlights)
-    }, [isBreakSentence, highlightList, textValue]);
-
-    /**
-     * level of highlight color
-     * 
-     * 1: 自己標記的部分 yellow
-     * 2: 另一邊標記的部分 blue
-     * 3: 關鍵字 gray
-     */
-
-    
-
     return (
         <div ref={divRef} style={divTextAreaStyled} >
-            <HighlightedText_Key 
-                text={currentTextValue} 
-                highlights={adjustedHighlights} 
-                highlightColor={highlightColor} />
+        
+                <HighlightSequence
+                    highlightColor={currentHighlightColor} 
+                    text={textValue}
+                    highlights={currentHighlightList}
+                    showTooltip={showTooltip}
+                    isOpenHighLight={currentIsOpenHighLight}
+                    
+                    />
         </div>
     );
+    
 };
 
 export default HighlightArea;
+
+
+const HighlightSequence: React.FC<{ text: string, highlights: HighLightPositionListType, highlightColor: highlightColor, 
+        showTooltip: boolean, isOpenHighLight:isOpenHighLightType  }> 
+        = ({ text, highlights, highlightColor, showTooltip, isOpenHighLight}) => {
+
+    let lave_highlights:TextPositionsType[] = []
+    
+
+    const generateHighlightedText = (text: string, highlights: TextPositionsType[], highlightColor: string, showTooltip: boolean, generateIndex: number) => {
+
+        let lastIndex = 0;
+        let highlightedText = [];
+        
+        highlights.forEach((item, index) => {
+            if (item.start_position <= lastIndex && item.start_position !== 0 && item.end_position !== 0) {
+                lave_highlights.push(item)
+                return;
+            }
+
+            if (item.start_position === 0 && item.end_position === 0) { // 檢查 start_position 或 end_position 是否為 0
+                return; 
+            }
+
+            const currentKey = item.key || "";
+            const currentClassName = showTooltip ? "sniper-tooltip" : ""
+        
+            highlightedText.push(text.substring(lastIndex, item.start_position));
+            highlightedText.push(
+                <Tooltip key={`${index}-${item.start_position}-tooltip-${generateIndex}`} title={currentKey} className={currentClassName} >
+                    <span key={`${index}-${item.start_position}-${generateIndex}`} style={{ backgroundColor: highlightColor}}>
+                        {text.substring(item.start_position, item.end_position)}
+                    </span>
+                </Tooltip>
+            );
+            lastIndex = item.end_position;
+        });
+        
+
+        highlightedText.push(text.substring(lastIndex));
+        return highlightedText;
+        
+    };
+
+
+    const renderHighlights = (): JSX.Element[] => {
+        let result: JSX.Element[] = [];
+        let current_total_generateIndex = 0;
+    
+        Object.entries(highlights).forEach(([type, highlightPositions]) => {
+
+            if (!isOpenHighLight[type]) {
+                return;
+            }
+
+            result.push(
+                <span className='textarea-position onlyHover' key={`${type}-${++current_total_generateIndex}`}>
+                    {generateHighlightedText(text, highlights[type], highlightColor[type], showTooltip, current_total_generateIndex)}
+                </span>
+            );
+
+            for (let i = 0; i <= 2; i++) {
+                if (lave_highlights.length == 0) break
+
+                let temp_highlights = [...lave_highlights];
+                lave_highlights.length = 0; // 清空 lave_highlights
+        
+                result.push(
+                    <span className='textarea-position onlyHover' key={`lave-${++current_total_generateIndex}`}>
+                        {generateHighlightedText(text, temp_highlights, highlightColor[type], showTooltip, current_total_generateIndex)}
+                    </span>
+                );
+            }
+        });
+
+        return result;
+    };
+
+
+
+    return (
+        <>
+            <div style={{position: "relative"}}>
+
+                <span className='textarea-position'>{text}</span>                
+                {renderHighlights()}
+            </div>
+
+        </>
+    );
+};

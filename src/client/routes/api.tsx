@@ -18,6 +18,7 @@ export const processDataRoutes = {
   uploadFileSort: `${API_URL}/processData/uploadFileSort`,
   downloadExcel: `${API_URL}/processData/downloadExcel`,
   fetchUsers: `${API_URL}/processData/fetchUsers`,
+  fetchComparatorProcessedContent: `${API_URL}/processData/fetchComparatorProcessedContent`,
 };
 
 export const loginRoutes = {

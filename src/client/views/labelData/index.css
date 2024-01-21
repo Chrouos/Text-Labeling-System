@@ -164,3 +164,11 @@
     background-color: rgba(255, 255, 255, 0.8) !important;
     z-index: 100; /* 確保在頂層 */
 }
+
+
+
+/* 修改未選中的 Switch 顏色 */
+.ant-switch {
+  background-color: #002c594e; /* 預設顏色 */
+}
+

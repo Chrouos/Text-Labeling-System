@@ -5,19 +5,16 @@ module.exports = [
         password: '1234',
     },
     {
+        account: 'Y_110502022',
+        password: '110502022',
+    },
+    {
+        account: 'Z_112522104',
+        password: '112522104',
+    },
+    {
         account: 'tester',
         password: '112233',
-        isAutoSave: false,
-        isAutoBreak: true,
-        fontSize:18,
     },
-    {
-        account: 'user_A',
-        password: '112233',
-    },
-    {
-        account: 'user_B',
-        password: '112233',
-    },
+
 ]
-    

@@ -1,11 +1,10 @@
 import json
 import os
 
-users = ['user_A', 'user_B', 'tester']
-fileNames = ['file_0.txt', 'file_1.txt']
+users = ['Y_110502022', 'Z_112522104']
+fileNames = ['file_1000_0.txt', 'file_1000_1.txt', 'file_1000_2.txt', 'file_1000_3.txt', 'file_1000_4.txt']
 processed_path = './src/server/uploads/processed/'
 files_path = './src/server/uploads/files/'
-
 
 
 for user in users:
@@ -28,9 +27,9 @@ for user in users:
                 # @ 讀取每一個 processed
                 for item in data['processed']:
                     name = item['name']
-                    value = item['value']
+                    value = item['value'].replace('\n', '').replace('\t', '')
                     surrounding_words = item['the_surrounding_words'].replace('\n', '').replace('\t', '')
-                    content = contentList[file_index]
+                    content = contentList[file_index].replace('\n', '').replace('\t', '')
                     
                     # - 比對
                     start_position = -1
@@ -45,6 +44,12 @@ for user in users:
                     # @ 捕捉位置
                     actual_start_position = surrounding_start_index + keyword_start_index
                     actual_end_position = actual_start_position + len(value)
+                    
+                    # @ 捕捉位置：例外
+                    if actual_start_position == -1 and value != "" and surrounding_words == "":
+                        except_keyword_start_index = content.find(str(value))
+                        actual_start_position = except_keyword_start_index
+                        actual_end_position = actual_start_position + len(value)
                     
                     # @ 添加位置資訊到 item
                     item['position'] = {

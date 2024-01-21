@@ -111,3 +111,160 @@ const handleReAction = () => {
     <Button className="w-full ant-btn-all_gpt" onClick={handleGptActionAll}
         disabled={currentFileName == null || contentList.length === 0} >GPT搜索(全部)</Button>
 </div> */}
+
+
+// -v- autoVariable -v- 自動生成
+// const ProcessedFieldsTemplate = <T extends Partial<ProcessedFieldsType>>(fields: T): ProcessedFieldsType => {
+
+//     const exampleProcessedFields: ProcessedFieldsType = {
+//         name: "",
+//         value: "",
+//         the_surrounding_words: "",
+//         regular_expression_match: "",
+//         regular_expression_formula: "",
+//         gpt_value: "",
+//         pre_normalize_value: ""
+//     };
+    
+//       // 使用 Object.keys 在這個示例對象上，以獲取所有的鍵
+//     const defaultFields = Object.keys(exampleProcessedFields).reduce((acc, key) => {
+//         acc[key as keyof ProcessedFieldsType] = "";
+//         return acc;
+//     }, {} as ProcessedFieldsType);
+
+//     return {
+//         ...defaultFields,
+//         ...fields
+//     };
+    // }
+
+
+
+
+const HighlightSequence: React.FC<{ text: string, highlights: HighLightPositionListType, highlightColor: highlightColor }> = ({ text, highlights, highlightColor }) => {
+
+    type ExtendedTextPositionType ={ key: string, position: number, type: 'start' | 'end', from: 'key' | 'self' | 'comparator' };
+    function transformHighlights(highlights: HighLightPositionListType): ExtendedTextPositionType[] {
+        let result: ExtendedTextPositionType[] = [];
+    
+        Object.entries(highlights).forEach(([from, positions]) => {
+            positions.forEach(position => {
+                result.push({
+                    key: position.key,
+                    position: position.start_position,
+                    type: 'start',
+                    from: from as 'key' | 'self' | 'comparator'
+                });
+                result.push({
+                    key: position.key,
+                    position: position.end_position,
+                    type: 'end',
+                    from: from as 'key' | 'self' | 'comparator'
+                });
+            });
+        });
+        result.sort((a, b) => a.position - b.position);
+        return result;
+    }
+
+    const highlightText = (temp_text: string, highlights: HighLightPositionListType, highlightColor: highlightColor) => {
+
+        let lastIndex = 0;
+        let highlightedText = [];
+        highlights.key.forEach((item, index) => {
+            highlightedText.push(text.substring(lastIndex, item.start_position));
+            highlightedText.push(
+                <span key={index} style={{ backgroundColor: highlightColor.key }}>
+                    {text.substring(item.start_position, item.end_position)}
+                </span>
+            );
+            lastIndex = item.end_position;
+        });
+
+        highlightedText.push(text.substring(lastIndex));
+        return highlightedText;
+    };
+
+    return (
+        <>
+            {highlightText(text, highlights, highlightColor)}
+        </>
+    );
+};
+
+
+
+
+
+
+
+
+－－－－－
+
+
+
+useEffect(() => {
+    const handleSelectionChange = () => {
+        if (divRef.current && document.contains(divRef.current)) {
+            const selection = window.getSelection();
+            if (selection && selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                if (divRef.current.contains(range.commonAncestorContainer)) {
+                    const selection = window.getSelection();
+                    if (selection && selection.rangeCount > 0) {
+                        const range = selection.getRangeAt(0);
+                        const selectedText = range.toString();
+            
+                        // 計算選取文本的起始位置
+                        const preCaretRange = range.cloneRange();
+                        preCaretRange.selectNodeContents(divRef.current);
+                        preCaretRange.setEnd(range.startContainer, range.startOffset);
+                        const start = preCaretRange.toString().length;
+            
+                        if (selectedText) {
+                            onTextSelection(selectedText, textValue, start);
+                        }
+                    }
+                }
+            }
+        }
+    };
+
+    document.addEventListener('selectionchange', handleSelectionChange);
+
+    return () => {
+        document.removeEventListener('selectionchange', handleSelectionChange);
+    };
+}, []);
+
+
+
+useEffect(() => {
+    const handleMouseUp = () => {
+        if (divRef.current && document.contains(divRef.current)) {
+            const selection = window.getSelection();
+            if (selection && selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                if (divRef.current.contains(range.commonAncestorContainer)) {
+                    const selectedText = range.toString();
+
+                    // 計算選取文本的起始位置
+                    const preCaretRange = range.cloneRange();
+                    preCaretRange.selectNodeContents(divRef.current);
+                    preCaretRange.setEnd(range.startContainer, range.startOffset);
+                    const start = preCaretRange.toString().length;
+
+                    if (selectedText) {
+                        onTextSelection(selectedText, textValue, start);
+                    }
+                }
+            }
+        }
+    };
+
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+        document.removeEventListener('mouseup', handleMouseUp);
+    };
+}, []);

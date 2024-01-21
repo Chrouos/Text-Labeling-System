@@ -1,0 +1,17 @@
+.textarea-position {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+}
+
+.onlyHover {
+    user-select: none !important;
+    pointer-events: none !important;
+    color: transparent
+
+}
+
+.sniper-tooltip  {
+    pointer-events: auto !important; 
+}
+

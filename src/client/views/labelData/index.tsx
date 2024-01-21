@@ -14,7 +14,7 @@ import {
     Modal,
     Spin,
     Checkbox, Divider,
-    Switch, Space, InputNumber
+    Switch, Space, InputNumber, ConfigProvider
 } from 'antd';
 import { message } from 'antd';
 import type { UploadProps } from 'antd';
@@ -43,6 +43,11 @@ type HighLightPositionListType = {
     key: TextPositionsType[],
     self: TextPositionsType[],
     comparator: TextPositionsType[]
+}
+type isOpenHighLightType = {
+    key: boolean,
+    self: boolean,
+    comparator: boolean
 }
 
 type SelectType = { value: string; label: string; };
@@ -77,6 +82,9 @@ const labelData = () => {
 
   // -------------------------------------------------- Fields Settings
 
+    const [accountList, setAccountList] = useState<SelectType[]>([])
+    const [currentComparator, setCurrentComparator] = useState<string>("");
+
     // - Global Settings
     const [extraction_label_form] = Form.useForm();
     const [messageApi, contextHolder] = message.useMessage();
@@ -108,6 +116,7 @@ const labelData = () => {
     const [currentFileName, setCurrentFileName] = useState<string | null>(null);
     const [filesNameList, setFilesNameList] = useState<SelectType[]>([]);
     const [currentFileContentVisual, setCurrentFileContentVisual] = useState<string>("");
+    const [currentTextAreaVisual, setCurrentTextAreaVisual] = useState<string>("");
     const [isBreakSentence, setIsBreakSentence] = useState<boolean>(true);
     const [isAutoSave, setIsAutoSave] = useState<boolean>(true);
     
@@ -124,6 +133,9 @@ const labelData = () => {
     // - Processed Fields
     const [processedList, setProcessedList] = useState<ProcessedListType[]>([]);
     const [currentSelectedLabel, setCurrentSelectedLabel] = useState<string>(""); // = 選擇的新欄位
+
+    // - Comparator 
+    const [comparatorProcessedList, setComparatorProcessedList] = useState<ProcessedListType[]>([]);
     
     // - other options.
     const [processLabelCheckedList, setProcessLabelCheckedList] = useState<CheckboxValueType[]>([]);
@@ -134,12 +146,18 @@ const labelData = () => {
     const [REFormula, setReFormula] = useState<string>("");
     const [textAreaPx, setTextAreaPx] = useState<number | null>(18);
 
-    // - HightLight
-    const [hightLightPositionList, setHightLightPositionList] = useState<HighLightPositionListType>()
-    const [hightLightList_key, setHightLightList_key] = useState<string[]>([]); // 關鍵字
-    const [hightLightPositionList_self, setHightLightPositionList_self] = useState<TextPositionsType[]>([]);
-    const [hightLightPositionList_key, setHightLightPositionList_key] = useState<TextPositionsType[]>([]);
-    const [isOpenHightLightListModal, setIsOpenHightLightListModal] = useState<boolean>(false);
+    // - HighLight
+    const [highLightPositionList, setHighLightPositionList] = useState<HighLightPositionListType>({
+        key: [],
+        self: [],
+        comparator: []
+    })
+    const [highLightList_key, setHighLightList_key] = useState<string[]>([]); // 關鍵字
+    const [isOpenHighLight, setIsOpenHighLight] = useState<isOpenHighLightType>({
+        key: true,
+        self: true,
+        comparator: false
+    })
 
     // - Table Viewer
     const [isTableModalOpen, setIsTableModalOpen] = useState<boolean>(false);
@@ -149,7 +167,7 @@ const labelData = () => {
 
     // -------------------------------------------------- API Settings
 
-    // -v- API - 抓取在 uploads/files 裡面的資料名稱
+    // ----- API - 抓取在 uploads/files 裡面的資料名稱
     const fetchFilesName = async () => {
         try {
             setIsLoading(true);
@@ -165,7 +183,7 @@ const labelData = () => {
         }
     }
     
-    // -v- API - 讀取 processed 的內容
+    // ----- API - 讀取 processed 的內容
     const fetchProcessedContent = async (fileName: string) => {
         setIsLoading(true); 
     
@@ -179,7 +197,7 @@ const labelData = () => {
             // @ 處理 file 內容
             const file_response = await defaultHttp.post(processDataRoutes.fetchFileContent, request, { headers: storedHeaders() });
 
-            const keysWithoutProcessed = Object.keys(file_response.data[defaultPage]); // = file -v- 裡面的所有欄位 (LIST)
+            const keysWithoutProcessed = Object.keys(file_response.data[defaultPage]); // = file ----- 裡面的所有欄位 (LIST)
             await updateFileFields(keysWithoutProcessed, file_response.data[defaultPage]);
             setContentList(file_response.data);
 
@@ -201,20 +219,67 @@ const labelData = () => {
         }
     }
 
-    // -v- void - 根據 process 讀取要顯示的 Label
+
+    // ----- API - 讀取 comparator processed 的內容
+    const fetchComparatorProcessedContent = async (fileName: string, currentComparator: string) => {
+        setIsLoading(true); 
+    
+        const request = {
+            fileName: fileName,
+            comparator_userName: currentComparator
+        };
+    
+        try {
+            const defaultPage = readTheCurrentPage(currentPage) // = 預設頁數
+
+            // @ 處理 processed 內容
+            const processed_response = await defaultHttp.post(processDataRoutes.fetchComparatorProcessedContent, request, { headers: storedHeaders() });
+            if (processed_response?.data?.[defaultPage]?.processed) {
+                setComparatorProcessedList(processed_response.data);
+            }
+        } catch (error) {
+            handleErrorResponse(error);
+        } finally {
+            setIsLoading(false);
+        }
+    }
+
+    // ----- API - 抓取 fetchFilesName 後擁有該檔名的所有user
+    const fetchMatchFileUser = async (fileName:string) => {
+        try {
+            setIsLoading(true);
+            const request = {
+                fileName: fileName as string,
+            }
+            const response = await defaultHttp.post(processDataRoutes.fetchUsers, request, { headers: storedHeaders() });
+            let filteredAccounts = response.data.filter((acc: SelectType) => acc.label !== account && acc.label !== storedAccount);
+
+            setAccountList(filteredAccounts);
+            setCurrentComparator(filteredAccounts[0].label);
+            fetchComparatorProcessedContent(fileName, filteredAccounts[0].label)
+
+        } catch (error) {
+            handleErrorResponse(error);
+        } finally {
+            setIsLoading(false);
+        }
+    }
+
+    // ----- void - 根據 process 讀取要顯示的 Label
     const processOptions = async (currentProcessedData: ProcessedFieldsType[]) => {
         const processedNameList = currentProcessedData.map((item:ProcessedFieldsType) => item.name);
         setProcessLabelOptions(processedNameList);
         setSortOptions(processedNameList);
 
         // - hight light
-        if (hightLightList_key.length == 0){
-            setHightLightList_key(processedNameList);
+        if (highLightList_key.length == 0){
+            setHighLightList_key(processedNameList);
+            setTempHighLightList(processedNameList.join(', '))
         }
     };
 
 
-    // -v- API - 存擋
+    // ----- API - 存擋
     const uploadProcessedFile = async () => {
         setIsLoading(true);
 
@@ -234,7 +299,7 @@ const labelData = () => {
         }
     };
 
-    // -v- API - 下載txt
+    // ----- API - 下載txt
     const downloadProcessedFile = async () => {
 
         setIsLoading(true);
@@ -279,12 +344,20 @@ const labelData = () => {
         }).finally(() => { setIsLoading(false); });
     }
 
-    // -v- API - 下載Excel
+    // ----- API - 下載Excel
     const downloadExcel = async () => {
         setIsLoading(true); 
+        let selectedUsers = [storedAccount]
+        if (storedAccount == "admin") {
+            selectedUsers = [account]
+        }
+        if (currentComparator != ""){
+            selectedUsers.push(currentComparator)
+        }
+
         const request = {
             fileName: currentFileName as string,
-            selectedUsers: [storedAccount],
+            selectedUsers: selectedUsers,
         }
 
         defaultHttp.post(processDataRoutes.downloadExcel, request, {
@@ -325,7 +398,7 @@ const labelData = () => {
         }).finally(() => { setIsLoading(false); });
     }
 
-    // -v- API - 刪除檔案
+    // ----- API - 刪除檔案
     const deleteFile = async () => {
         try {
             setIsLoading(true);
@@ -343,7 +416,7 @@ const labelData = () => {
     }
     
 
-    // -v- API - 增加欄位
+    // ----- API - 增加欄位
     const addExtractionLabel_all = async () => {
         setIsLoading(true);
     
@@ -364,7 +437,7 @@ const labelData = () => {
         }
     }
 
-    // -v- API - 刪除欄位
+    // ----- API - 刪除欄位
     const removeLabel_all = async (labelToRemove: string) => {
         setIsLoading(true);
 
@@ -387,7 +460,7 @@ const labelData = () => {
 
     // -------------------------------------------------- Other Setting.
     
-    // -v- Props 上傳檔案的資料
+    // ----- Props 上傳檔案的資料
     const uploadFileProps: UploadProps = { 
         name: 'file', 
         beforeUpload: (file: UploadFile) => {
@@ -416,7 +489,7 @@ const labelData = () => {
         },
     };
 
-    // -v- 排序 & 預設勾選 儲存
+    // ----- 排序 & 預設勾選 儲存
     const handleClickOK = async () => {
         
         setProcessLabelCheckedList(defaultCheck);
@@ -439,32 +512,7 @@ const labelData = () => {
         }
     }
 
-    // -v- autoVariable -v- 自動生成
-    // const ProcessedFieldsTemplate = <T extends Partial<ProcessedFieldsType>>(fields: T): ProcessedFieldsType => {
-
-    //     const exampleProcessedFields: ProcessedFieldsType = {
-    //         name: "",
-    //         value: "",
-    //         the_surrounding_words: "",
-    //         regular_expression_match: "",
-    //         regular_expression_formula: "",
-    //         gpt_value: "",
-    //         pre_normalize_value: ""
-    //     };
-        
-    //       // 使用 Object.keys 在這個示例對象上，以獲取所有的鍵
-    //     const defaultFields = Object.keys(exampleProcessedFields).reduce((acc, key) => {
-    //         acc[key as keyof ProcessedFieldsType] = "";
-    //         return acc;
-    //     }, {} as ProcessedFieldsType);
-
-    //     return {
-    //         ...defaultFields,
-    //         ...fields
-    //     };
-    // }
-
-    // void - 更新 currentProcessed 到指定 index of processedList 
+    // ----- void -> 更新 currentProcessed 到指定 index of processedList 
     const updateCurrentProcessedToList = (updatedProcessedFields: ProcessedFieldsType[]) => {
 
         const temp_ProcessedList = [...processedList];
@@ -475,17 +523,18 @@ const labelData = () => {
 
     // -------------------------------------------------- Other Functions
 
-    // -v- 選擇檔案
+    // ----- 選擇檔案
     const chooseTheFile = (selectedValue: string) => {
         setCurrentFileName(selectedValue);
         fetchProcessedContent(selectedValue);
+        fetchMatchFileUser(selectedValue);
     }
     
-    // -v- 換頁
+    // ----- 換頁
     const changePage = async (page: number) => {
         const indexPage = readTheCurrentPage(page);
 
-        const keysWithoutProcessed = Object.keys(contentList[indexPage]); // = file -v- 裡面的所有欄位 (LIST)
+        const keysWithoutProcessed = Object.keys(contentList[indexPage]); // = file ----- 裡面的所有欄位 (LIST)
         await updateFileFields(keysWithoutProcessed, contentList[indexPage]);
         setCurrentPage(page);
         
@@ -507,7 +556,7 @@ const labelData = () => {
         }
     }
 
-    // -v- 增加處理欄位
+    // ----- 增加處理欄位
     const addExtractionLabel = () => {
 
         setIsLoading(true);
@@ -526,18 +575,24 @@ const labelData = () => {
         
     }
 
-    // -v- Filter - 選擇檔案 
+    // ----- Filter - 選擇檔案 
     const labelValue_selectedFilterOption = (input: string, option?: { label: string; value: string }) => {
         if (!option) { return false; }
         return (option.label ?? '').toLowerCase().includes(input.toLowerCase());
     };
 
-    // -v- handle - Check ALL Processed Label Checkboxes
+    // ----- Filter - 選擇帳號
+    const accountList_selectedFilterOption = (input: string, option?: { label: string; value: string }) => {
+        if (!option) { return false; }
+        return (option.label ?? '').toLowerCase().includes(input.toLowerCase());
+    };
+
+    // ----- handle - Check ALL Processed Label Checkboxes
     const handleCheckAllChange = (e: CheckboxChangeEvent) => {
         setProcessLabelCheckedList(e.target.checked ? processLabelOptions : []);
     };
 
-    // -v- handle -v- 若修改了 Processed Label
+    // ----- handle ----- 若修改了 Processed Label
     const handleChangeCheckbox = (list: CheckboxValueType[]) => {
 
         if (!isLockingCheckedAll) {
@@ -560,25 +615,25 @@ const labelData = () => {
         }
     };
 
-    // -v- handle - 修改 re 公式
+    // ----- handle - 修改 re 公式
     const handleREFormulaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setReFormula(e.target.value);
     }
     
-    // -v- handle - 鎖定全選
+    // ----- handle - 鎖定全選
     const handleLockingCheckedAll = (isLocking: boolean) => {
         setIsLockingCheckedAll(!isLockingCheckedAll);
         if (isLocking) {  }
     }
 
-    // -v- handle 刪除檔案
+    // ----- handle 刪除檔案
     const handleDeleteFile = async () => {
         await deleteFile();
         closeModal(); 
         cleanTheField();
     }
 
-    // -v- handle - 清除資料
+    // ----- handle - 清除資料
     const cleanTheField = () => {
         setCurrentFileName("");
         setCurrentFileContentVisual("");
@@ -588,11 +643,12 @@ const labelData = () => {
 
         setSortOptions([]);
         setProcessLabelOptions([]);
-        setHightLightList_key([]);
+        setHighLightList_key([]);
+        setTempHighLightList("")
         setProcessLabelCheckedList([]);
     }
 
-    // -v- handle - 對要擷取內容 HighLight, 並修改相關資訊，送到 Fields Input 中
+    // ----- handle - 對要擷取內容 HighLight, 並修改相關資訊，送到 Fields Input 中
     const currentPageRef = useRef(currentPage);
     const currentProcessedListRef = useRef(processedList);
     const currentSelectedLabelRef = useRef(currentSelectedLabel);
@@ -608,7 +664,6 @@ const labelData = () => {
         }
 
         if (selectedText) {
-
             
             const indexPage = readTheCurrentPage(currentPageRef.current);
             const escapedSelectedText = escapeRegExp(selectedText);
@@ -648,7 +703,7 @@ const labelData = () => {
         }
     };
 
-    // -v- handle - 更新當前檔案 Fields
+    // ----- handle - 更新當前檔案 Fields
     async function updateFileFields(keysWithoutProcessed: string[], tempContentList: FileContentType) {
 
         const formattedKeys = keysWithoutProcessed.map(key => ({ value: key, label: key }));
@@ -657,7 +712,6 @@ const labelData = () => {
 
         // @ 如果目前沒有 currentContentFieldKey，或者它不再是有效的 key，則設置為第一個 key
         if (currentContentFieldKey == null || !formattedKeys.some(key => key.value === currentContentFieldKey)) {
-            // console.log(formattedKeys.some(key => key.value === currentContentFieldKey), currentContentFieldKey == null)
 
             const defaultFieldKey = keysWithoutProcessed[0];
 
@@ -670,7 +724,7 @@ const labelData = () => {
         
     }
 
-    // -v- Template - 編輯欄位
+    // ----- Template - 編輯欄位
     const editFieldsLabelTemplate = () => {
 
         const indexPage = readTheCurrentPage(currentPage);
@@ -782,46 +836,78 @@ const labelData = () => {
     
     // ---------------------------------------------------------------------------------------------------- Highlight
 
-    // -v- 處理換行和位置資訊
-    // const processTextAndHighlights = (textValue: string, isOpenHighLight: boolean[]) => {
-    //     if (!isBreakSentence) return { text: textValue, hightLightList: hightLightPositionList };
-    
-    //     let adjustedHighlights:TextPositionsType[] = JSON.parse(JSON.stringify(highLightPositionList));
-    //     let sentences = "";
-    //     let currentFileContentArray = Array.from(textValue);
+    // ----- 處理換行和位置資訊
+    async function  processTextAndHighlights (_highLightPositionList: HighLightPositionListType) {
+        if (!isBreakSentence) return { text: currentFileContentVisual, highLightList: _highLightPositionList };
         
-    //     // 遍歷每一個字符
-    //     for (let i = 0; i < currentFileContentArray.length; i++) {
+    
+        let adjustedHighlights:HighLightPositionListType = _highLightPositionList;
+        // JSON.parse(JSON.stringify(highLightPositionList));
+        let sentences = "";
+        let currentFileContentArray = Array.from(currentFileContentVisual);
+        
+        // 遍歷每一個字符
+        for (let i = 0; i < currentFileContentArray.length; i++) {
 
-    //         let char = currentFileContentArray[i];
-    //         let nextChar = currentFileContentArray[i + 1];
-    //         let addChar = char;
-    //         let positionAdjustment = 0;
+            let char = currentFileContentArray[i];
+            let nextChar = currentFileContentArray[i + 1];
+            let addChar = char;
+            let positionAdjustment = 0;
     
-    //         if ((char === '。' || char === '？' || char === '！') && !(nextChar === '「' || nextChar === '」')) {
-    //             positionAdjustment = 2; // 換行和制表符
-    //             sentences += addChar + "\n\t";
-    //         } else {
-    //             sentences += addChar;
-    //         }
+            if ((char === '。' || char === '？' || char === '！') && !(nextChar === '「' || nextChar === '」')) {
+                positionAdjustment = 2; // 換行和制表符
+                sentences += addChar + "\n\t";
+            } else {
+                sentences += addChar;
+            }
     
-    //         // 更新 highlightList 中的位置
-    //         adjustedHighlights = adjustedHighlights.map(highlight => {
-    //             if (highlight.start_position >= sentences.length -2 ) {
-    //                 return {
-    //                     ...highlight,
-    //                     start_position: highlight.start_position + positionAdjustment,
-    //                     end_position: highlight.end_position + positionAdjustment
-    //                 };
-    //             }
-    //             return highlight;
-    //         });
-    //     }
-    
-    //     return { text: sentences, highlights: adjustedHighlights };
-    // };
+            // - 更新 highlightList 中的位置
 
-    const findHightLightListPosition_key = () => {
+            // @ Key
+            adjustedHighlights.key = adjustedHighlights.key.map(highlight => {
+                if (highlight.start_position >= sentences.length -2 ) {
+                    return {
+                        ...highlight,
+                        start_position: highlight.start_position + positionAdjustment,
+                        end_position: highlight.end_position + positionAdjustment
+                    };
+                }
+                return highlight;
+            });    
+
+            // @ Self
+            adjustedHighlights.self = adjustedHighlights.self.map(highlight => {
+                if (highlight.start_position >= sentences.length -2 ) {
+                    return {
+                        ...highlight,
+                        start_position: highlight.start_position + positionAdjustment,
+                        end_position: highlight.end_position + positionAdjustment
+                    };
+                }
+                return highlight;
+            });    
+
+            // @ comparator
+            adjustedHighlights.comparator = adjustedHighlights.comparator.map(highlight => {
+                if (highlight.start_position >= sentences.length -2 ) {
+                    return {
+                        ...highlight,
+                        start_position: highlight.start_position + positionAdjustment,
+                        end_position: highlight.end_position + positionAdjustment
+                    };
+                }
+                return highlight;
+            });    
+        }
+    
+        // setCurrentTextAreaVisual(sentences);
+        // setHighLightPositionList(adjustedHighlights)
+        
+        return { text: sentences, highlights: adjustedHighlights };
+    };
+
+    // ----- 找到關鍵字的 Position
+    async function findHighLightListPosition_key () {
         
         const findKeywordPositions = (keywords: string[], text: string) => {
             const positions = [];
@@ -841,82 +927,116 @@ const labelData = () => {
             return positions;
         };
         
-        const positions = findKeywordPositions(hightLightList_key, currentFileContentVisual);
+        const positions = findKeywordPositions(highLightList_key, currentFileContentVisual);
         positions.sort((a, b) => a.start_position - b.start_position);
-        setHightLightPositionList_key(positions);
-    }
-    useEffect(() => { setTimeout(() => { findHightLightListPosition_key() }, 1000);}, [currentFileContentVisual, hightLightList_key])
-
-    const  findHightLightListPosition_self = () => {
         
+        setHighLightPositionList(prevState => ({
+            ...prevState, 
+            key: positions
+        }));
+
+        return positions
+    }
+
+    // ----- 找到自己標記的 Position
+    async function findHighLightListPosition_self () {
         if (processedList.length != 0) {
 
-            let temp_hightLightPositionList_self:TextPositionsType[] = [];
+            let positions:TextPositionsType[] = [];
             const currentProcessed = processedList[readTheCurrentPage(currentPage)].processed;
             currentProcessed.map(item => {
 
                 const itemKeyPosition = {
-                    key: item.value,
+                    key: item.name,
                     start_position: item.position.start_position,
                     end_position: item.position.end_position
                 }
-                temp_hightLightPositionList_self.push(itemKeyPosition);
+                positions.push(itemKeyPosition);
             })
-            setHightLightPositionList_self(temp_hightLightPositionList_self)
 
+            positions.sort((a, b) => a.start_position - b.start_position);
+            setHighLightPositionList(prevState => ({
+                ...prevState, 
+                self: positions
+            }));
+
+            return positions
         }
+
+        return []
     }
 
-    useEffect(() => { 
-        
-        setTimeout(() => { 
-            findHightLightListPosition_key()
-            // findHightLightListPosition_self()
-        }, 500);
-    }, [currentFileContentVisual, processedList, hightLightList_key, currentPage])
+    // ----- 找到 Comparator 標記的 Position
+    async function findHighLightListPosition_comparator () {
+        if (comparatorProcessedList.length != 0) {
+
+            let positions:TextPositionsType[] = [];
+            const currentProcessed = comparatorProcessedList[readTheCurrentPage(currentPage)].processed;
+            currentProcessed.map(item => {
+
+                const itemKeyPosition = {
+                    key: item.name,
+                    start_position: item.position.start_position,
+                    end_position: item.position.end_position
+                }
+                positions.push(itemKeyPosition);
+            })
+
+            positions.sort((a, b) => a.start_position - b.start_position);
+            setHighLightPositionList(prevState => ({
+                ...prevState, 
+                self: positions
+            }));
+
+            return positions
+        }
+
+        return []
+    }
 
 
-    const HightLightEditDisplay = () => {
-        const [tempHightLightList, setTempHightLightList] = useState<string>(hightLightList_key.join(', '));
-        
-        const handleOk = () => {
-            // 移除多餘的空白和逗號
-            const newList = tempHightLightList
-                            .split(',')
-                            .map(item => item.trim())
-                            .filter(item => item !== '');
-        
-            setHightLightList_key(newList);
-            setIsOpenHightLightListModal(false);
-        };
-        
-        return (
-            <Modal
-                open={isOpenHightLightListModal}
-                title={'HightLight'}
-                okButtonProps={{className: "ant-btn-check"}}
-                onCancel={() => setIsOpenHightLightListModal(false)}
-                onOk={handleOk} >
-                
-                <p className='mb-3'>注意每個想高光的單字需要用逗號隔開！預設為欄位，可自行修改 <br/> 該結果不會儲存到下次使用，請自己筆記</p>
+    useEffect(() => {
 
-                <TextArea  
-                    style={{fontSize: textAreaPx||18}}
-                    value={tempHightLightList} 
-                    onChange={(e) => setTempHightLightList(e.target.value)}
-                    autoSize={{minRows: 10}} />
-            
-            </Modal>
-        );
+        findHighLightListPosition_key().then(key => {
+            findHighLightListPosition_self().then(self => {
+                findHighLightListPosition_comparator().then(comparator => {
+
+                    const _highLightPositionList:HighLightPositionListType  = { key: key, self: self, comparator: comparator, }
+                    processTextAndHighlights(_highLightPositionList).then(result => {
+                        setCurrentTextAreaVisual(result.text);
+                        setHighLightPositionList(result.highlights || {
+                            key: key,
+                            self: self,
+                            comparator: [],
+                        })
+                    }).catch(error => { console.log("processTextAndHighlights", error) });
+
+                }).catch(error => {console.log("findHighLightListPosition_comparator", error)})
+            }).catch(error => {console.log("findHighLightListPosition_self", error)});
+        }).catch(error => {console.log("findHighLightListPosition_key", error)});
+        
+    }, [currentFileContentVisual, isBreakSentence, highLightList_key, processedList, comparatorProcessedList])
+    useEffect(()=>{
+        // console.log(highLightPositionList)
+    }, [highLightPositionList])
+
+
+    const [tempHighLightList, setTempHighLightList] = useState<string>(highLightList_key.join(', '));
+    const handleOk = () => {
+        // 移除多餘的空白和逗號
+        const newList = tempHighLightList
+                        .split(',')
+                        .map(item => item.trim())
+                        .filter(item => item !== '');
+    
+        setHighLightList_key(newList);
+        setTempHighLightList(newList.join(', '))
     };
 
-    // -v- 進入網頁執行一次 Init
-    useEffect(() => {
-        
-        cleanTheField();
-        fetchFilesName();
+    
 
-    }, [account]);
+    // ----- 進入網頁執行一次 Init
+    useEffect(() => { cleanTheField(); fetchFilesName(); }, [account]);
 
     useEffect(() => {
         // 如果已經有 storedAccount，則重定向到標籤資料頁面
@@ -925,11 +1045,13 @@ const labelData = () => {
         }
     }, [navigate, storedAccount]);
 
+
+    // useEffect(() => {console.log(isOpenHighLight)}, [isOpenHighLight])
+
     // ---------------------------------------------------------------------------------------------------- Return 
 
     return (
     <Spin spinning={isLoading} tip="Loading...">
-        
         
         {/* 開關位置  */}
         <div className="mb-4 space-x-2">
@@ -990,16 +1112,15 @@ const labelData = () => {
 
                     <HighlightArea 
                         textAreaPx={textAreaPx}
-                        textValue={currentFileContentVisual}
+                        textValue={currentTextAreaVisual}
                         onTextSelection={handleTextSelection}
-                        highlightList={hightLightPositionList_key}
-                        // highlightList={hightLightPositionList_self}
+                        highlightList={highLightPositionList}
                         highlightColor={{
-                            key: "rgb(255 229 0 / 83%)",
-                            self: "rgb(255 229 0 / 83%)",
-                            comparator: "rgb(255 229 0 / 83%)"
+                            key: "#92929256",
+                            self: "#fc27275c",
+                            comparator: "#4b69ff51"
                         }}
-                        isBreakSentence={isBreakSentence} />
+                        isOpenHighLight={isOpenHighLight} />
 
                     <div className='grid grid-cols-11 gap-2'>
                         <div className='col-span-2' style={{ display: 'flex', alignItems: "center"}}> 是否自動斷句：<Switch defaultChecked onChange={(e) => setIsBreakSentence(e)} /> </div>
@@ -1062,9 +1183,64 @@ const labelData = () => {
                 </>}
 
 
+                {/* TextArea Dashboard */}
                 {isVisible[5] && <>
                     <Card bordered={false} className="w-full cursor-default grid gap-4 mb-4"  title={"TextArea Dashboard"}
                         extra={ <Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(5)}></Button>}>
+
+                        <div >
+                            <Select
+                                    className='w-full mb-4'
+                                    filterOption={accountList_selectedFilterOption}
+                                    options={accountList}
+                                    value={currentComparator}
+                                    placeholder="選擇比對對象"
+                                    onChange={(e) => {
+                                        fetchComparatorProcessedContent(currentFileName || "", e)
+                                        setCurrentComparator(e)
+                                    }}
+                            />
+
+                            {/* 選項 */}
+                            <ConfigProvider 
+                                theme={{
+                                    components: {
+                                        Switch: {
+                                            handleBg: "#ffffff",
+                                            colorPrimary: "#188035be",
+                                            colorPrimaryHover: "#1880358a",
+                                            colorTextTertiary: "#0916231b"
+                                        },},
+                                    }}
+                                >
+                                <div className='grid gap-2 mb-4 grid-cols-3' >
+                                    <Switch className='w-full' checkedChildren="開啟：關鍵字" unCheckedChildren="關閉：關鍵字" defaultChecked={isOpenHighLight.key}
+                                        onChange={(e) => setIsOpenHighLight(prevState => ({ ...prevState, key: e }))} />
+                                    <Switch className='w-full' checkedChildren="開啟標記紀錄" unCheckedChildren="關閉：標記紀錄" defaultChecked={isOpenHighLight.self}
+                                    onChange={(e) => setIsOpenHighLight(prevState => ({  ...prevState,  self: e })) } />
+                                    <Switch className='w-full' checkedChildren="開啟：比對標記" unCheckedChildren="關閉：比對標記" defaultChecked={isOpenHighLight.comparator}
+                                        onChange={(e) => setIsOpenHighLight(prevState => ({ ...prevState,   comparator: e })) } />
+                                </div>
+                            </ConfigProvider>
+                            
+
+                            <p className='mb-3'>關鍵字高光：<br />注意每個想高光的單字需要用逗號隔開！預設為欄位，可自行修改 <br/> 該結果不會儲存到下次使用，請自己筆記</p>
+                            <TextArea  
+                                style={{fontSize: textAreaPx||18}}
+                                value={tempHighLightList} 
+                                onChange={(e) => setTempHighLightList(e.target.value)}
+                                autoSize={{minRows: 10}} />
+
+                            <Button 
+                                className="w-full ant-btn-check mt-4"  
+                                icon={<DownloadOutlined />} 
+                                disabled={!currentFileName}
+                                onClick={handleOk}> 
+                                <span className="btn-text">Update Text Area</span> 
+                            </Button>
+
+                        </div>
+
                     </Card>
                 </>}
 
@@ -1087,13 +1263,6 @@ const labelData = () => {
 
                         <Button className='mr-2' onClick={() => setIsTableModalOpen(true)} disabled={currentFileName == null || contentList.length === 0}>
                             Table Edit
-                        </Button>
-
-                        
-
-                        <Button className='mr-2' disabled={currentFileName == null || contentList.length === 0}
-                            onClick={(e) => {setIsOpenHightLightListModal(true) }}>
-                            Highlight
                         </Button>
 
                         <CheckboxGroup 
@@ -1173,7 +1342,7 @@ const labelData = () => {
         </Modal>
 
         {/* 高光編輯 */}
-        <HightLightEditDisplay />
+        
     
         {/* 編輯欄位 */}
         <Modal 

@@ -8,6 +8,9 @@ const app = Router();
 app.get('/processData/fetchUploadsFileName', processDataController.fetchUploadsFileName);
 app.post('/processData/fetchFileContent', processDataController.fetchFileContent);
 app.post('/processData/fetchProcessedContent', processDataController.fetchProcessedContent);
+app.post('/processData/fetchComparatorProcessedContent', processDataController.fetchComparatorProcessedContent);
+
+
 app.post('/processData/fetchProcessedContentByUser', processDataController.fetchProcessedContentByUser);
 app.post('/processData/deleteFile', processDataController.deleteFile);
 app.post('/processData/fetchUsers', processDataController.fetchUsers);

@@ -975,3 +975,35 @@ exports.fetchUsers = async (req, res) => {
         res.status(500).send(`[fetchUsers] Error : ${error.message || error}`);
     }
 }
+
+
+// -------------------------------------------------- 比對者的 Processed
+exports.fetchComparatorProcessedContent = async (req, res) => {
+    try {
+
+        // @ 1. 讀取檔案
+        const fileName = req.body.fileName
+        const fake_headers = {
+            "stored-account": req.body.comparator_userName
+        }
+        
+        const { processedDirectory, filesDirectory } = determineDirectories(fake_headers);
+
+        // @ 2. 過濾出.txt 檔案且名稱符合 req.body.fileName
+        const files = fs.readdirSync(processedDirectory); 
+        const targetFile = files.find(file => path.extname(file) === '.txt' && file === fileName);
+
+        // @ 3. 讀取檔案
+        if (targetFile) {
+            const filePath = path.join(processedDirectory, targetFile);
+            const fileContent = fs.readFileSync(filePath, 'utf8');
+            const responseData = fileContent.trim().split('\n').map(line => JSON.parse(line));
+            res.status(200).send(responseData);
+        } 
+
+        else res.status(404).send('File not found.');
+    }
+    catch (error) {
+        res.status(500).send(`[fetchProcessedContent] Error : ${error.message || error}`);
+    }
+}
