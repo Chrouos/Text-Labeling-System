@@ -1,3 +1,14 @@
+### 01/22
++ 增加高光部分
+    + 關鍵字高光：適用於任何狀況
+    + 標記高光：只適用於「cleanJudgement」
+        + 需注意只有在 cleanJudgement 才會紀錄 start_position, end_position. 其他檔案不適用
+    + 比對高光：只適用於「cleanJudgement」
+        + 比對高光是根據 start_position, end_position 做的輸出
+    + 預設只有關鍵字高光
+    + 按下 Z 可以看到高光的 Key
+    + Can download compare CSV. 
+
 ### 01/08
 + 修改 Excel 下載方式 => 可以比對多個人的 Excel (只要同檔名)
 + 加入關鍵字 HightLight
