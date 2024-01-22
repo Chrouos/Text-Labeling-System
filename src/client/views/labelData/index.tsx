@@ -871,47 +871,51 @@ const labelData = () => {
             if ((char === '。' || char === '？' || char === '！') && !(nextChar === '「' || nextChar === '」')) {
                 positionAdjustment = 2; // 換行和制表符
                 sentences += addChar + "\n\t";
+
+                // @ Key
+                adjustedHighlights.key = adjustedHighlights.key.map(highlight => {
+                    if (highlight.start_position >= sentences.length - 2 ) {
+                        return {
+                            ...highlight,
+                            start_position: highlight.start_position + positionAdjustment,
+                            end_position: highlight.end_position + positionAdjustment
+                        };
+                    }
+                    return highlight;
+                });    
+
+
+                // @ Self
+                adjustedHighlights.self = adjustedHighlights.self.map(highlight => {
+                    if (highlight.start_position >= sentences.length - 2 ) {
+                        return {
+                            ...highlight,
+                            start_position: highlight.start_position + positionAdjustment,
+                            end_position: highlight.end_position + positionAdjustment
+                        };
+                    }
+                    return highlight;
+                });    
+
+                // @ comparator
+                adjustedHighlights.comparator = adjustedHighlights.comparator.map(highlight => {
+                    if (highlight.start_position >= sentences.length - 2 ) {
+                        return {
+                            ...highlight,
+                            start_position: highlight.start_position + positionAdjustment,
+                            end_position: highlight.end_position + positionAdjustment
+                        };
+                    }
+                    return highlight;
+                });    
+
             } else {
                 sentences += addChar;
             }
     
             // - 更新 highlightList 中的位置
 
-            // @ Key
-            adjustedHighlights.key = adjustedHighlights.key.map(highlight => {
-                if (highlight.start_position >= sentences.length -2 ) {
-                    return {
-                        ...highlight,
-                        start_position: highlight.start_position + positionAdjustment,
-                        end_position: highlight.end_position + positionAdjustment
-                    };
-                }
-                return highlight;
-            });    
-
-            // @ Self
-            adjustedHighlights.self = adjustedHighlights.self.map(highlight => {
-                if (highlight.start_position >= sentences.length -2 ) {
-                    return {
-                        ...highlight,
-                        start_position: highlight.start_position + positionAdjustment,
-                        end_position: highlight.end_position + positionAdjustment
-                    };
-                }
-                return highlight;
-            });    
-
-            // @ comparator
-            adjustedHighlights.comparator = adjustedHighlights.comparator.map(highlight => {
-                if (highlight.start_position >= sentences.length -2 ) {
-                    return {
-                        ...highlight,
-                        start_position: highlight.start_position + positionAdjustment,
-                        end_position: highlight.end_position + positionAdjustment
-                    };
-                }
-                return highlight;
-            });    
+            
         }
     
         // setCurrentTextAreaVisual(sentences);
@@ -1034,19 +1038,24 @@ const labelData = () => {
             }).catch(error => {console.log("findHighLightListPosition_key", error)});
         }
         else {
-            processTextAndHighlights({ key: [], self: [], comparator: [] }).then(result => {
-                setCurrentTextAreaVisual(result.text);
-                setHighLightPositionList({
-                    key: [],
-                    self: [],
-                    comparator: [],
-                })
-                setLoadingStates(prev => ({ ...prev, TextAreaHighlight: false }));
-                
-            }).catch(error => { console.log("processTextAndHighlights", error) });
+            setLoadingStates(prev => ({ ...prev, TextAreaHighlight: true }));
+            findHighLightListPosition_key().then(key => {
+
+                const _highLightPositionList:HighLightPositionListType  = { key: key, self: [], comparator: [], }
+                processTextAndHighlights(_highLightPositionList).then(result => {
+                    setCurrentTextAreaVisual(result.text);
+                    setHighLightPositionList(result.highlights || {
+                        key: key,
+                        self: [],
+                        comparator: [],
+                    })
+                    setLoadingStates(prev => ({ ...prev, TextAreaHighlight: false }));
+                }).catch(error => { console.log("processTextAndHighlights", error) });
+
+            }).catch(error => {console.log("findHighLightListPosition_key", error)});
         }
         
-    }, [currentFileContentVisual, isBreakSentence, highLightList_key, processedList, comparatorProcessedList, currentFileName, currentPage])
+    }, [currentFileContentVisual, isBreakSentence, highLightList_key, processedList, comparatorProcessedList, currentFileName, currentPage, currentContentFieldKey])
 
 
     const [tempHighLightList, setTempHighLightList] = useState<string>(highLightList_key.join(', '));
