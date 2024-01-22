@@ -1154,7 +1154,8 @@ const labelData = () => {
                             self: "#fc27275c",
                             comparator: "#4b69ff51"
                         }}
-                        isOpenHighLight={isOpenHighLight} />
+                        isOpenHighLight={isOpenHighLight}
+                        isBreakSentence={isBreakSentence} />
 
                     <div className='grid grid-cols-11 gap-2'>
                         <div className='col-span-2' style={{ display: 'flex', alignItems: "center"}}> 是否自動斷句：<Switch defaultChecked onChange={(e) => setIsBreakSentence(e)} /> </div>

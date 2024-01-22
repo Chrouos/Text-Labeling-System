@@ -79,6 +79,7 @@ const HighlightArea: React.FC<HighlightAreaProps> = ({
     
                         if (selectedText) {
                             let accumulation_step = 0
+                            console.log(isBreakSentence)
                             if (isBreakSentence){
                                 for (let i = 0; i < textValue.length; i++) {
                                     let char = textValue[i];
@@ -101,7 +102,7 @@ const HighlightArea: React.FC<HighlightAreaProps> = ({
         return () => {
             document.removeEventListener('mouseup', handleMouseUp);
         };
-    }, [textValue]);
+    }, [textValue, isBreakSentence]);
     
 
     const currentHighlightList = {
