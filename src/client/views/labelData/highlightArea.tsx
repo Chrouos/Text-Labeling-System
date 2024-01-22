@@ -23,13 +23,14 @@ interface HighlightAreaProps {
     onTextSelection: (selectedText: string, fullText: string, startPosition: number) => void; 
     highlightList: HighLightPositionListType,
     highlightColor: highlightColor,
-    isOpenHighLight: isOpenHighLightType
+    isOpenHighLight: isOpenHighLightType,
+    isBreakSentence: boolean
 }
 
 
 
 const HighlightArea: React.FC<HighlightAreaProps> = ({ 
-    textAreaPx, textValue, onTextSelection, highlightList, highlightColor, isOpenHighLight }) => {
+    textAreaPx, textValue, onTextSelection, highlightList, highlightColor, isOpenHighLight, isBreakSentence  }) => {
 
     const currentIsOpenHighLight = isOpenHighLight || {
         key: false,
@@ -77,15 +78,15 @@ const HighlightArea: React.FC<HighlightAreaProps> = ({
                         const start = preCaretRange.toString().length;
     
                         if (selectedText) {
-
                             let accumulation_step = 0
-                            for (let i = 0; i < textValue.length; i++) {
-                                let char = textValue[i];
-                                let nextChar = textValue[i + 1];
-                                if ((char === '。' || char === '？' || char === '！') && !(nextChar === '「' || nextChar === '」') && start > i   ) {
-                                    accumulation_step -= 2
-                                } 
-                                // else if (i >= final_start) break
+                            if (isBreakSentence){
+                                for (let i = 0; i < textValue.length; i++) {
+                                    let char = textValue[i];
+                                    let nextChar = textValue[i + 1];
+                                    if ((char === '。' || char === '？' || char === '！') && !(nextChar === '「' || nextChar === '」') && start > i   ) {
+                                        accumulation_step -= 2
+                                    } 
+                                }
                             }
                             // console.log(start, accumulation_step, textValue.length)
                             onTextSelection(selectedText, textValue, start + accumulation_step ); // - (textValue.length + accumulation_step) 
