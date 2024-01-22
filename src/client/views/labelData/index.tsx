@@ -98,6 +98,14 @@ const labelData = () => {
             setIsVisible(newIsVisible);
         };
     }
+    const cleanIsVisible = () => {
+        let tempIsVisible: boolean[] = []
+        isVisible.map(() => {
+            tempIsVisible.push(false);
+        })
+        setIsVisible(tempIsVisible)
+    }
+
     const [modalSetting, setModalSetting] = useState<ModalFormatterType>({
         // = Default Modal Settings 
         isOpen: false, 
@@ -233,7 +241,7 @@ const labelData = () => {
 
     // ----- API - 讀取 comparator processed 的內容
     const fetchComparatorProcessedContent = async (fileName: string, currentComparator: string) => {
-         
+        
         setLoadingStates(prev => ({ ...prev, fetchComparatorProcessedContent: true }));
         const request = {
             fileName: fileName,
@@ -1070,8 +1078,6 @@ const labelData = () => {
         setTempHighLightList(newList.join(', '))
     };
 
-    
-
     // ----- 進入網頁執行一次 Init
     useEffect(() => { cleanTheField(); fetchFilesName(); }, [account]);
 
@@ -1089,6 +1095,7 @@ const labelData = () => {
         
         {/* 開關位置  */}
         <div className="mb-4 space-x-2">
+            <a onClick={cleanIsVisible}>隱藏空間</a>
             <Button onClick={chooseIsVisible(0)} className={isVisible[0] ? 'ant-btn-none' : 'ant-btn-notChosen'}>Actions</Button>
             <Button onClick={chooseIsVisible(1)} className={isVisible[1] ? 'ant-btn-none' : 'ant-btn-notChosen'}>Labels Checked</Button>
             <Button onClick={chooseIsVisible(2)} className={isVisible[2] ? 'ant-btn-none' : 'ant-btn-notChosen'}>Add Extraction Label</Button>
@@ -1113,18 +1120,18 @@ const labelData = () => {
 
                         <Select 
                             className='col-span-3' 
-                            placeholder="Select the File Name"
+                            placeholder="1. Select the File Name"
                             optionFilterProp="children"
                             filterOption={labelValue_selectedFilterOption}
                             options={filesNameList}
                             onChange={chooseTheFile}
-                            value={currentFileName}
+                            value={currentFileName == "" ? null : currentFileName}
                             loading={isLoading} 
                             showSearch />
 
                         <Select 
                             className='col-span-2' 
-                            placeholder="Select the Fields Name"
+                            placeholder="2. Select the Fields Name"
                             optionFilterProp="children"
                             filterOption={labelValue_selectedFilterOption}
                             options={fileFieldsList}
@@ -1132,7 +1139,7 @@ const labelData = () => {
                                 setCurrentContentFieldKey(e);
                                 setCurrentFileContentVisual((contentList[readTheCurrentPage(currentPage)] as any)[e]);
                             }}
-                            value={currentContentFieldKey}
+                            value={currentContentFieldKey == "" ? null : currentContentFieldKey}
                             loading={isLoading} 
                             showSearch />
 
