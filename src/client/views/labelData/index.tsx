@@ -146,6 +146,7 @@ const labelData = () => {
     const [contentList, setContentList] = useState<FileContentType[]>([]);
     const [fileFieldsList, setFileFieldsList] = useState<SelectType[]>([]); // = 可選擇內容
     const [currentContentFieldKey, setCurrentContentFieldKey] = useState<string>("");
+    const [defaultFieldKey, setDefaultFieldKey] = useState<string>("");
 
     // - Processed Fields
     const [processedList, setProcessedList] = useState<ProcessedListType[]>([]);
@@ -164,12 +165,12 @@ const labelData = () => {
     const [textAreaPx, setTextAreaPx] = useState<number | null>(18);
 
     // - HighLight
+    const [highLightList_key, setHighLightList_key] = useState<string[]>([]);
     const [highLightPositionList, setHighLightPositionList] = useState<HighLightPositionListType>({
         key: [],
         self: [],
         comparator: []
     })
-    const [highLightList_key, setHighLightList_key] = useState<string[]>([]); // 關鍵字
     const [isOpenHighLight, setIsOpenHighLight] = useState<isOpenHighLightType>({
         key: true,
         self: true,
@@ -178,10 +179,10 @@ const labelData = () => {
 
     // - Table Viewer
     const [isTableModalOpen, setIsTableModalOpen] = useState<boolean>(false);
-
     const [sortOptions, setSortOptions] = useState<string[]>([]);
     const [defaultCheck, setDefaultCheck] = useState<CheckboxValueType[]>([]);
 
+    
     
 
 
@@ -364,7 +365,7 @@ const labelData = () => {
 
     // ----- API - 下載Excel
     const downloadExcel = async () => {
-         
+        
         let selectedUsers = [storedAccount]
         if (storedAccount == "admin") {
             selectedUsers = [account]
@@ -669,35 +670,73 @@ const labelData = () => {
     const currentPageRef = useRef(currentPage);
     const currentProcessedListRef = useRef(processedList);
     const currentSelectedLabelRef = useRef(currentSelectedLabel);
+    const currentContentListRef = useRef(contentList);
+    const currentDefaultFieldKeyRef = useRef(defaultFieldKey);
+    const currentContentFieldKeyRef = useRef(currentContentFieldKey);
     useEffect(() => {
         currentPageRef.current = currentPage;
         currentProcessedListRef.current = processedList;
         currentSelectedLabelRef.current = currentSelectedLabel;
-    }, [currentPage, processedList, currentSelectedLabel]);
+        currentContentListRef.current = contentList;
+        currentDefaultFieldKeyRef.current = defaultFieldKey;
+        currentContentFieldKeyRef.current = currentContentFieldKey;
+    }, [currentPage, processedList, currentSelectedLabel, contentList, defaultFieldKey, currentContentFieldKey]);
 
     const handleTextSelection = (selectedText: string, fullText: string, startPosition: number) => {
         function escapeRegExp(text:string) {
             return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         }
 
+        function catchSurroundingText(selectedText: string, fullText: string, startPosition: number): string {
+            const punctuation = /[，。、]/;
+            const clean_fullText = fullText.replace(/\s+/g, '')
+            let start = startPosition;
+            let end = startPosition + selectedText.length;
+        
+            // 向前搜尋，直到遇到標點符號或文本開頭
+            while (start > 0 && !punctuation.test(fullText[start - 1])) {
+                start--;
+            }
+        
+            // 向後搜尋，直到遇到標點符號或文本結尾
+            while (end < fullText.length && !punctuation.test(fullText[end])) {
+                end++;
+            }
+        
+            // 返回選定單字的前後文
+            console.log(startPosition, start,end)
+            return fullText.substring(start, end).replace(/\s+/g, '');
+        }
+
+
         if (selectedText) {
             
             const indexPage = readTheCurrentPage(currentPageRef.current);
             const escapedSelectedText = escapeRegExp(selectedText);
+            const clean_selectedText = selectedText.replace(/\s+/g, '');
     
             // @ 前後文
-            const surroundingText = fullText.slice(Math.max(0, startPosition - 50), startPosition + selectedText.length + 50);
-            const regex = new RegExp(`([^，。、]*[，。、]*[^，。、]*${escapedSelectedText}[^，。、]*[，。、]*[^，。、]*)`);
-            const match = surroundingText.match(regex);
-            const the_surrounding_words = match ? match[0] : "";
+            const currentVisual = currentContentListRef.current[readTheCurrentPage(currentPage)][currentContentFieldKeyRef.current];
+            const the_surrounding_words = catchSurroundingText(selectedText, currentVisual, startPosition);
+            // const surroundingText = fullText.slice(Math.max(0, startPosition - 100), startPosition + clean_selectedText.length + 200);
+            // const regex = new RegExp(`([^，。、]*[，。、]*[^，。、]*${escapedSelectedText}[^，。、]*[，。、]*[^，。、]*)`);
+            // const match = surroundingText.match(regex);
+            // const the_surrounding_words = match ? match[0].replace(/\s+/g, '') : "";
+            // console.log(surroundingText, startPosition)
 
             // @ 位置 Position
             let start_position = startPosition;
             let end_position = startPosition + escapedSelectedText.length;
 
-            if (currentContentFieldKey != "cleanJudgement"){
-                start_position = -1
-                end_position = -1
+            if (currentContentFieldKey != defaultFieldKey){
+
+                // @ 根據 surrounding_word 找到
+                const currentDefaultVisual = currentContentListRef.current[readTheCurrentPage(currentPage)][currentDefaultFieldKeyRef.current];
+                const indexOfSurroundingWord = currentDefaultVisual.indexOf(the_surrounding_words);
+                const indexOfSelectedText = the_surrounding_words.indexOf(clean_selectedText);
+
+                start_position = indexOfSurroundingWord + indexOfSelectedText
+                end_position = start_position + escapedSelectedText.length;
             }
 
             // @ 存擋
@@ -706,7 +745,7 @@ const labelData = () => {
                 if (field.name === currentSelectedLabelRef.current) {
                     return { 
                         ...field, 
-                        value: selectedText, 
+                        value: clean_selectedText, 
                         the_surrounding_words: the_surrounding_words,
                         position:{
                             start_position: start_position,
@@ -737,6 +776,7 @@ const labelData = () => {
 
             const defaultFieldKey = keysWithoutProcessed[0];
 
+            setDefaultFieldKey(defaultFieldKey)
             setCurrentContentFieldKey(defaultFieldKey);
             result_currentFieldKey = defaultFieldKey;
         }
@@ -1023,7 +1063,7 @@ const labelData = () => {
 
     useEffect(() => {
 
-        if (currentContentFieldKey == "cleanJudgement"){
+        if (currentContentFieldKey == defaultFieldKey){
             setLoadingStates(prev => ({ ...prev, TextAreaHighlight: true }));
             findHighLightListPosition_key().then(key => {
                 findHighLightListPosition_self().then(self => {
