@@ -79,7 +79,6 @@ const HighlightArea: React.FC<HighlightAreaProps> = ({
     
                         if (selectedText) {
                             let accumulation_step = 0
-                            console.log(isBreakSentence)
                             if (isBreakSentence){
                                 for (let i = 0; i < textValue.length; i++) {
                                     let char = textValue[i];
@@ -89,7 +88,6 @@ const HighlightArea: React.FC<HighlightAreaProps> = ({
                                     } 
                                 }
                             }
-                            // console.log(start, accumulation_step, textValue.length)
                             onTextSelection(selectedText, textValue, start + accumulation_step ); // - (textValue.length + accumulation_step) 
                         }
                     }
