@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import DragSorting from './dragSorting';
 import {
     Card,
@@ -33,6 +33,7 @@ import type { CheckboxValueType } from 'antd/es/checkbox/Group';
 import { storedHeaders } from '../../utils/storedHeaders';
 import { useAccount } from '../../store/accountContext';
 import HighlightArea from './highlightArea';
+import { current } from '@reduxjs/toolkit';
 
 const { TextArea } = Input;
 const CheckboxGroup = Checkbox.Group;
@@ -577,8 +578,6 @@ const labelData = () => {
     // ----- 增加處理欄位
     const addExtractionLabel = () => {
 
-        
-
         // @ 檢查是否重複
         const indexPage = readTheCurrentPage(currentPage);
         const isExisting = processedList[indexPage].processed.some(processedField => processedField.name === newExtractionLabel );
@@ -718,11 +717,6 @@ const labelData = () => {
             // @ 前後文
             const currentVisual = currentContentListRef.current[readTheCurrentPage(currentPage)][currentContentFieldKeyRef.current];
             const the_surrounding_words = catchSurroundingText(selectedText, currentVisual, startPosition);
-            // const surroundingText = fullText.slice(Math.max(0, startPosition - 100), startPosition + clean_selectedText.length + 200);
-            // const regex = new RegExp(`([^，。、]*[，。、]*[^，。、]*${escapedSelectedText}[^，。、]*[，。、]*[^，。、]*)`);
-            // const match = surroundingText.match(regex);
-            // const the_surrounding_words = match ? match[0].replace(/\s+/g, '') : "";
-            // console.log(surroundingText, startPosition)
 
             // @ 位置 Position
             let start_position = startPosition;
@@ -804,13 +798,25 @@ const labelData = () => {
         const handleClean = (indexToClean: number, labelName:string) => {
             setIsLoading(true)
             const updatedProcessedFields = [...processedList[indexPage].processed];
-            updatedProcessedFields[indexToClean].value = '';
+            updatedProcessedFields[indexToClean] = {
+                "name": labelName,
+                "value": "",
+                "the_surrounding_words": "",
+                "regular_expression_match": "",
+                "regular_expression_formula": "",
+                "gpt_value": "",
+                "position": {
+                    "start_position": -1,
+                    "end_position": -1
+                }
+            }
             updateCurrentProcessedToList(updatedProcessedFields)
             setIsLoading(false)
         }
 
         const handleCancel = (indexToCancel: number, labelName:string) => {
             setIsLoading(true)
+            setCurrentSelectedLabel("");
             setProcessLabelCheckedList(currentList => 
                 currentList.filter(item => !(item === labelName))
             );
@@ -1060,6 +1066,18 @@ const labelData = () => {
         return []
     }
 
+    const currentPagePositions = useMemo(() => {
+        // 假設 readTheCurrentPage 返回當前頁面對應的 index
+        const currentPageIndex = readTheCurrentPage(currentPage);
+        const currentPageProcessed = processedList[currentPageIndex]?.processed;
+        
+        if (currentPageProcessed) {
+            return currentPageProcessed.map(item => item.position.start_position).join(',');
+        }
+        return '';
+    }, [processedList, currentPage]); // 確保 processedList 和 currentPage 變化時更新
+    
+
 
     useEffect(() => {
 
@@ -1103,7 +1121,7 @@ const labelData = () => {
             }).catch(error => {console.log("findHighLightListPosition_key", error)});
         }
         
-    }, [currentFileContentVisual, isBreakSentence, highLightList_key, processedList, comparatorProcessedList, currentFileName, currentPage, currentContentFieldKey])
+    }, [currentFileContentVisual, isBreakSentence, highLightList_key, currentPagePositions, comparatorProcessedList, currentFileName, currentPage, currentContentFieldKey])
 
 
     const [tempHighLightList, setTempHighLightList] = useState<string>(highLightList_key.join(', '));
