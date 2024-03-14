@@ -37,6 +37,8 @@ import { current } from '@reduxjs/toolkit';
 
 const { TextArea } = Input;
 const CheckboxGroup = Checkbox.Group;
+// import type { SelectProps } from 'antd';
+
 
 // - 定義類型
 type TextPositionsType = {key:string, start_position: number, end_position: number}
@@ -91,7 +93,7 @@ const labelData = () => {
     const [messageApi, contextHolder] = message.useMessage();
     const navigate = useNavigate();
 
-    const [isVisible, setIsVisible] = useState<boolean[]>([false, true, false, true, false, false]);
+    const [isVisible, setIsVisible] = useState<boolean[]>([false, true, false, true, false, false, true]);
     const chooseIsVisible = (index: number) => {
         return (event: React.MouseEvent<HTMLElement>) => {
             const newIsVisible = [...isVisible];
@@ -159,6 +161,9 @@ const labelData = () => {
     // - other options.
     const [processLabelCheckedList, setProcessLabelCheckedList] = useState<CheckboxValueType[]>([]);
     const [processLabelOptions, setProcessLabelOptions] = useState<string[]>([]);
+    const returnSelectTypeFromStringList = (list: string[]) => {
+        return list.map((item: string) => ({ value: item, label: item }));
+    }
 
     const [newExtractionLabel, setNewExtractionLabel] = useState<string>("");
     const [isLockingCheckedAll, setIsLockingCheckedAll] = useState<boolean>(false);
@@ -665,6 +670,13 @@ const labelData = () => {
         setProcessLabelCheckedList([]);
     }
 
+    // ----- handle - 選擇資料 Select Change
+    const handleComparisonSelectChange = (value: string) => {
+        setCurrentSelectedLabel(value);
+    };
+
+
+
     // ----- handle - 對要擷取內容 HighLight, 並修改相關資訊，送到 Fields Input 中
     const currentPageRef = useRef(currentPage);
     const currentProcessedListRef = useRef(processedList);
@@ -1077,7 +1089,18 @@ const labelData = () => {
         return '';
     }, [processedList, currentPage]); // 確保 processedList 和 currentPage 變化時更新
     
-
+    // 比對
+    
+    const renderProcessedList = (list: ProcessedListType[], keyPrefix: string) => {
+        if (list.length === 0) return null;
+    
+        return list[currentPage].processed.map((value, index) => {
+            if (value.name === currentSelectedLabel) {
+                return <p key={keyPrefix + index}>{value.value}</p>;
+            }
+            return null;
+        });
+    };
 
     useEffect(() => {
 
@@ -1123,6 +1146,7 @@ const labelData = () => {
         
     }, [currentFileContentVisual, isBreakSentence, highLightList_key, currentPagePositions, comparatorProcessedList, currentFileName, currentPage, currentContentFieldKey])
 
+    
 
     const [tempHighLightList, setTempHighLightList] = useState<string>(highLightList_key.join(', '));
     const handleOk = () => {
@@ -1145,6 +1169,7 @@ const labelData = () => {
             navigate(webRoutes.labelData);
         }
     }, [navigate, storedAccount]);
+
 
     // ---------------------------------------------------------------------------------------------------- Return 
 
@@ -1283,7 +1308,29 @@ const labelData = () => {
                 </>}
 
 
-                {/* TextArea Dashboard */}
+
+                {isVisible[6] && <>
+                    <Card bordered={false} className="w-full cursor-default grid gap-4 mb-4"  title={"目前選擇: " + currentSelectedLabel}
+                        extra={ <Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(6)}></Button>}>
+                        <div>
+                            <Select
+                                showSearch
+                                style={{ width: '100%', marginBottom: '15px' }}
+                                onChange={handleComparisonSelectChange}
+                                options={returnSelectTypeFromStringList(processLabelOptions)}
+                            />
+                            
+                            <div>
+                                {/* <p style={{fontSize:"large", fontWeight: "bold"}}>你選的</p> */}
+                                {/* {renderProcessedList(processedList, "show-moving-")} */}
+                                {/* <br/> */}
+                                <p style={{fontSize:"large", fontWeight: "bold"}}>比較者選的</p>
+                                {renderProcessedList(comparatorProcessedList, "show-moving-")}
+                            </div>
+                        </div>
+                    </Card>
+                </>}
+
                 {isVisible[5] && <>
                     <Card bordered={false} className="w-full cursor-default grid gap-4 mb-4"  title={"TextArea Dashboard"}
                         extra={ <Button icon={<CloseOutlined />} type="text" onClick={chooseIsVisible(5)}></Button>}>
@@ -1344,7 +1391,7 @@ const labelData = () => {
                     </Card>
                 </>}
 
-
+                {/* TextArea Dashboard */}
                 {isVisible[1] && <>
                     <Card bordered={false} className="w-full cursor-default grid gap-4 mb-4"  title={"Labels Checked"} 
                         extra={ <div> 
