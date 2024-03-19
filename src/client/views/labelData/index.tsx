@@ -1094,7 +1094,7 @@ const labelData = () => {
     const renderProcessedList = (list: ProcessedListType[], keyPrefix: string) => {
         if (list.length === 0) return null;
     
-        return list[currentPage].processed.map((value, index) => {
+        return list[readTheCurrentPage(currentPage)].processed.map((value, index) => {
             if (value.name === currentSelectedLabel) {
                 return <p key={keyPrefix + index}>{value.value}</p>;
             }
