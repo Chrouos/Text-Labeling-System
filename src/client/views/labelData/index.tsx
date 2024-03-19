@@ -1322,7 +1322,7 @@ const labelData = () => {
                             
                             <div>
                                 {/* <p style={{fontSize:"large", fontWeight: "bold"}}>你選的</p> */}
-                                {/* {renderProcessedList(processedList, "show-moving-")} */}
+                                {renderProcessedList(processedList, "show-moving-")}
                                 {/* <br/> */}
                                 <p style={{fontSize:"large", fontWeight: "bold"}}>比較者選的</p>
                                 {renderProcessedList(comparatorProcessedList, "show-moving-")}
