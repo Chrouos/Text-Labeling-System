@@ -9,6 +9,8 @@ yarn dev
 
 + 可以增加想要標記的欄位
 + 前後文擷取
++ 擷取後的文章會高量化
++ 如果有多人可以進行比對
 
 ### 如果使用 Docker
 ```
@@ -16,10 +18,7 @@ chomd +x run.sh # 先把 run.sh 轉成可以啟動的模式
 ./run.sh
 ```
 
-
-![image](https://github.com/Chrouos/Text-Labeling-System/assets/56072039/98c837de-449d-4a88-86e7-1342a5ad8f41)
-
-
+![截圖 2024-05-07 晚上9 30 58](https://github.com/Chrouos/Text-Labeling-System/assets/56072039/0fecd4d2-071d-4894-90aa-fbb0003d8aed)
 
 ## Error
 
