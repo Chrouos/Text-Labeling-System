@@ -1,10 +1,11 @@
 # Introduction
 
-一個標記系統，可以自行建立文本，在頁面上新增要標記欄位。  
-點選相對應要標記的欄位後可以直接選取文本，進行標記
+這是一個 Text Labeling System（文本標註系統）專案，旨在提供一個基於 Web 的平台，用於文本數據的標註與管理。
+本專案提供了一個可視化的文本標註系統，方便使用者對文本數據進行標註（Labeling），並能夠高效地管理與導出標註結果。適用於 自然語言處理（NLP） 領域的數據標註需求，如情感分析、命名實體識別（NER）、文本分類等。
+
++ React.js + Tailwind CSS
 
 ## Start.
-
 
 `npm install`
 
@@ -23,7 +24,8 @@ chomd +x run.sh # 先把 run.sh 轉成可以啟動的模式
 ./run.sh
 ```
 
-![截圖 2024-05-07 晚上9 30 58](https://github.com/Chrouos/Text-Labeling-System/assets/56072039/0fecd4d2-071d-4894-90aa-fbb0003d8aed)
+![截圖 2025-03-19 晚上11 00 08](https://github.com/user-attachments/assets/6d6aca2d-07ab-4dcf-a0cb-754d3df678ec)
+
 
 ## Error
 
@@ -43,5 +45,18 @@ chomd +x run.sh # 先把 run.sh 轉成可以啟動的模式
 > },
 > ```
 
+
+---
+
+#  📌 適用場景
+
+學術研究：NLP 領域的數據標註，訓練機器學習模型。
+企業應用：客服文本、用戶回饋分析、輿情監控等。
+教育與學習：作為 NLP 課程的標註工具。
+
+# 📢 聯絡與貢獻
+歡迎貢獻本專案！若有任何問題，請提交 Issue 或 Pull Request。
+
+📌 GitHub Repo： Text Labeling System
 
 [工作流程](https://github.com/Chrouos/Text-Labeling-System/blob/main/workflow.md)
